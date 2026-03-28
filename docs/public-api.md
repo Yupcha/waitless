@@ -14,17 +14,26 @@ Content-Type: application/json
 | `email` | string | ✅ | Subscriber email |
 | `name` | string | ✅ | Subscriber name |
 | `source` | string | — | `"form"` (default), `"api"`, or `"widget"` |
+| `promo` | string | — | Promo campaign code (e.g., `get5`) |
 
 **Response `201`:**
 ```json
 {
   "message": "subscribed",
   "subscriber": {
-    "id": "uuid",
+    "id": "AbPjb8GbmjcJ",
     "email": "user@example.com",
     "name": "Jane Doe",
     "status": "active",
+    "country": "US",
     "created_at": "2026-03-28T12:00:00Z"
+  },
+  "coupon": {
+    "code": "EARLY-xK9mP2qr",
+    "discount_type": "flat",
+    "discount_value": 5.00,
+    "currency": "USD",
+    "expires_at": "2026-04-28T00:00:00Z"
   }
 }
 ```
@@ -43,6 +52,8 @@ Content-Type: application/json
 - Fires `subscriber.created` webhook
 - Tracks analytics (referrer, user agent, IP)
 - Supports double opt-in if enabled on project
+- Auto-generates coupon code if a matching promo campaign is active
+- Geo-locates subscriber country from IP
 
 ---
 

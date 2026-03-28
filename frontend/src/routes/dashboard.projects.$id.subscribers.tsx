@@ -17,11 +17,12 @@ function SubscribersPage() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [countryFilter, setCountryFilter] = useState('')
   const [selected, setSelected] = useState<string[]>([])
 
   const { data, isLoading } = useQuery({
-    queryKey: ['subscribers', id, page, search, statusFilter],
-    queryFn: () => subscribersApi.list(id, { page, limit: 50, search, status: statusFilter }).then(r => r.data),
+    queryKey: ['subscribers', id, page, search, statusFilter, countryFilter],
+    queryFn: () => subscribersApi.list(id, { page, limit: 50, search, status: statusFilter, country: countryFilter }).then(r => r.data),
   })
 
   const subscribers: any[] = data?.subscribers || []
@@ -70,6 +71,9 @@ function SubscribersPage() {
           <option value="active">Active</option>
           <option value="unsubscribed">Unsubscribed</option>
         </select>
+
+        <input className="input" placeholder="Country (US, IN...)" style={{ width: 80 }}
+          value={countryFilter} onChange={e => { setCountryFilter(e.target.value.toUpperCase()); setPage(1) }} />
 
         <a
           href={subscribersApi.export(id)}
@@ -120,15 +124,16 @@ function SubscribersPage() {
                 <th>Email</th>
                 <th>Status</th>
                 <th>Source</th>
+                <th>Country</th>
                 <th>Signed Up</th>
                 <th style={{ width: 60 }}></th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>Loading...</td></tr>
+                <tr><td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>Loading...</td></tr>
               ) : subscribers.length === 0 ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>No subscribers found</td></tr>
+                <tr><td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>No subscribers found</td></tr>
               ) : subscribers.map((s: any) => (
                 <tr key={s.id}>
                   <td>
@@ -143,6 +148,11 @@ function SubscribersPage() {
                   </td>
                   <td>
                     <span className="badge badge-purple">{s.source}</span>
+                  </td>
+                  <td style={{ fontSize: 13 }}>
+                    {s.country ? (
+                      <span style={{ color: '#94a3b8' }}>{s.country}</span>
+                    ) : <span style={{ color: '#334155' }}>—</span>}
                   </td>
                   <td style={{ color: '#64748b', fontSize: 13 }}>{formatDate(s.created_at)}</td>
                   <td>

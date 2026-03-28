@@ -168,6 +168,7 @@ type Subscriber struct {
 	Status           SubscriberStatus `json:"status" gorm:"default:'active'"`
 	Source           Source           `json:"source" gorm:"default:'form'"`
 	IPAddress        string           `json:"ip_address"`
+	Country          string           `json:"country" gorm:"type:varchar(2)"`
 	UnsubscribeToken string           `json:"-" gorm:"uniqueIndex"`
 	ConfirmedAt      *time.Time       `json:"confirmed_at"` // for double opt-in
 	CustomData       string           `json:"custom_data"`  // JSON object
@@ -282,7 +283,9 @@ const (
 // PromoCampaign is a per-project promo configuration
 type PromoCampaign struct {
 	ID            string       `json:"id" gorm:"type:varchar(12);primaryKey"`
-	ProjectID     string       `json:"project_id" gorm:"type:varchar(12);uniqueIndex;not null"`
+	ProjectID     string       `json:"project_id" gorm:"type:varchar(12);not null;index"`
+	PromoCode     string       `json:"promo_code" gorm:"type:varchar(50)"` // trigger code (get5, promo6)
+	IsDefault     bool         `json:"is_default" gorm:"default:false"`
 	Enabled       bool         `json:"enabled" gorm:"default:false"`
 	DiscountType  DiscountType `json:"discount_type" gorm:"default:'flat'"`
 	DiscountValue float64      `json:"discount_value" gorm:"default:0"`
@@ -292,6 +295,7 @@ type PromoCampaign struct {
 	MaxCodes      int          `json:"max_codes" gorm:"default:0"` // 0 = unlimited
 	ValidDays     int          `json:"valid_days" gorm:"default:0"` // 0 = never expires
 	Description   string       `json:"description"`
+	CodesIssued   int64        `json:"codes_issued" gorm:"-"` // virtual field
 	CreatedAt     time.Time    `json:"created_at"`
 	UpdatedAt     time.Time    `json:"updated_at"`
 }
@@ -307,8 +311,10 @@ func (p *PromoCampaign) BeforeCreate(tx *gorm.DB) error {
 type CouponCode struct {
 	ID            string       `json:"id" gorm:"type:varchar(12);primaryKey"`
 	ProjectID     string       `json:"project_id" gorm:"type:varchar(12);not null;index"`
+	CampaignID    string       `json:"campaign_id" gorm:"type:varchar(12);index"`
 	SubscriberID  string       `json:"subscriber_id" gorm:"type:varchar(12);not null;index"`
 	Code          string       `json:"code" gorm:"uniqueIndex;not null"`
+	SourceCode    string       `json:"source_code"` // promo code the subscriber used
 	Status        CouponStatus `json:"status" gorm:"default:'active'"`
 	DiscountType  DiscountType `json:"discount_type"`
 	DiscountValue float64      `json:"discount_value"`
@@ -318,6 +324,7 @@ type CouponCode struct {
 	CreatedAt     time.Time    `json:"created_at"`
 	UpdatedAt     time.Time    `json:"updated_at"`
 	Subscriber    Subscriber   `json:"subscriber,omitempty" gorm:"foreignKey:SubscriberID"`
+	Campaign      *PromoCampaign `json:"campaign,omitempty" gorm:"foreignKey:CampaignID"`
 }
 
 func (c *CouponCode) BeforeCreate(tx *gorm.DB) error {

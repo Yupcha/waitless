@@ -90,6 +90,7 @@ GET /api/v1/projects/{projectId}/coupons/validate?code=EARLY-xK9mP2qr
 {
   "valid": true,
   "code": "EARLY-xK9mP2qr",
+  "source_code": "get5",
   "status": "active",
   "discount_type": "flat",
   "discount_value": 5.00,

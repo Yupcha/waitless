@@ -2,31 +2,39 @@ package api
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/waitless/waitless/internal/database"
+	middleware "github.com/waitless/waitless/internal/middleware"
 	"github.com/waitless/waitless/internal/models"
 )
 
 // ============ Dashboard Handlers ============
 
-// GetPromoCampaign returns the promo campaign config for a project
-func GetPromoCampaign(w http.ResponseWriter, r *http.Request) {
+// ListPromoCampaigns returns all promo campaigns for a project with stats
+func ListPromoCampaigns(w http.ResponseWriter, r *http.Request) {
 	projectID := chi.URLParam(r, "id")
-	userID := r.Context().Value("user_id").(string)
+	user := middleware.GetUser(r)
 
-	// Verify ownership
 	var project models.Project
-	if err := database.DB.Where("id = ? AND user_id = ?", projectID, userID).First(&project).Error; err != nil {
+	if err := database.DB.Where("id = ? AND user_id = ?", projectID, user.ID).First(&project).Error; err != nil {
 		jsonError(w, "project not found", http.StatusNotFound)
 		return
 	}
 
-	var campaign models.PromoCampaign
-	database.DB.Where("project_id = ?", projectID).First(&campaign)
+	var campaigns []models.PromoCampaign
+	database.DB.Where("project_id = ?", projectID).Order("is_default DESC, created_at DESC").Find(&campaigns)
 
-	// Also get stats
+	// Fill codes_issued virtual field
+	for i, c := range campaigns {
+		var count int64
+		database.DB.Model(&models.CouponCode{}).Where("campaign_id = ?", c.ID).Count(&count)
+		campaigns[i].CodesIssued = count
+	}
+
+	// Global stats
 	var totalCodes int64
 	var usedCodes int64
 	var activeCodes int64
@@ -35,25 +43,27 @@ func GetPromoCampaign(w http.ResponseWriter, r *http.Request) {
 	database.DB.Model(&models.CouponCode{}).Where("project_id = ? AND status = ?", projectID, models.CouponActive).Count(&activeCodes)
 
 	jsonResponse(w, map[string]interface{}{
-		"campaign":     campaign,
+		"campaigns":    campaigns,
 		"total_codes":  totalCodes,
 		"used_codes":   usedCodes,
 		"active_codes": activeCodes,
 	}, http.StatusOK)
 }
 
-// SavePromoCampaign creates or updates the promo campaign config
-func SavePromoCampaign(w http.ResponseWriter, r *http.Request) {
+// CreatePromoCampaign creates a new promo campaign
+func CreatePromoCampaign(w http.ResponseWriter, r *http.Request) {
 	projectID := chi.URLParam(r, "id")
-	userID := r.Context().Value("user_id").(string)
+	user := middleware.GetUser(r)
 
 	var project models.Project
-	if err := database.DB.Where("id = ? AND user_id = ?", projectID, userID).First(&project).Error; err != nil {
+	if err := database.DB.Where("id = ? AND user_id = ?", projectID, user.ID).First(&project).Error; err != nil {
 		jsonError(w, "project not found", http.StatusNotFound)
 		return
 	}
 
 	var input struct {
+		PromoCode     string  `json:"promo_code"`
+		IsDefault     bool    `json:"is_default"`
 		Enabled       bool    `json:"enabled"`
 		DiscountType  string  `json:"discount_type"`
 		DiscountValue float64 `json:"discount_value"`
@@ -69,6 +79,8 @@ func SavePromoCampaign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	input.PromoCode = strings.TrimSpace(strings.ToLower(input.PromoCode))
+
 	if input.DiscountType != "flat" && input.DiscountType != "percent" {
 		input.DiscountType = "flat"
 	}
@@ -79,10 +91,94 @@ func SavePromoCampaign(w http.ResponseWriter, r *http.Request) {
 		input.Currency = "USD"
 	}
 
-	var campaign models.PromoCampaign
-	database.DB.Where("project_id = ?", projectID).First(&campaign)
+	// Check duplicate promo_code within project
+	if input.PromoCode != "" {
+		var existing models.PromoCampaign
+		if database.DB.Where("project_id = ? AND promo_code = ?", projectID, input.PromoCode).First(&existing).Error == nil {
+			jsonError(w, "promo code already exists for this project", http.StatusConflict)
+			return
+		}
+	}
 
-	campaign.ProjectID = projectID
+	// If setting as default, unset other defaults
+	if input.IsDefault {
+		database.DB.Model(&models.PromoCampaign{}).Where("project_id = ? AND is_default = ?", projectID, true).
+			Update("is_default", false)
+	}
+
+	campaign := models.PromoCampaign{
+		ProjectID:     projectID,
+		PromoCode:     input.PromoCode,
+		IsDefault:     input.IsDefault,
+		Enabled:       input.Enabled,
+		DiscountType:  models.DiscountType(input.DiscountType),
+		DiscountValue: input.DiscountValue,
+		Currency:      input.Currency,
+		CodePrefix:    input.CodePrefix,
+		CodeLength:    input.CodeLength,
+		MaxCodes:      input.MaxCodes,
+		ValidDays:     input.ValidDays,
+		Description:   input.Description,
+	}
+
+	database.DB.Create(&campaign)
+	jsonResponse(w, campaign, http.StatusCreated)
+}
+
+// UpdatePromoCampaign updates an existing campaign
+func UpdatePromoCampaign(w http.ResponseWriter, r *http.Request) {
+	projectID := chi.URLParam(r, "id")
+	campaignID := chi.URLParam(r, "cid")
+	user := middleware.GetUser(r)
+
+	var project models.Project
+	if err := database.DB.Where("id = ? AND user_id = ?", projectID, user.ID).First(&project).Error; err != nil {
+		jsonError(w, "project not found", http.StatusNotFound)
+		return
+	}
+
+	var campaign models.PromoCampaign
+	if err := database.DB.Where("id = ? AND project_id = ?", campaignID, projectID).First(&campaign).Error; err != nil {
+		jsonError(w, "campaign not found", http.StatusNotFound)
+		return
+	}
+
+	var input struct {
+		PromoCode     string  `json:"promo_code"`
+		IsDefault     bool    `json:"is_default"`
+		Enabled       bool    `json:"enabled"`
+		DiscountType  string  `json:"discount_type"`
+		DiscountValue float64 `json:"discount_value"`
+		Currency      string  `json:"currency"`
+		CodePrefix    string  `json:"code_prefix"`
+		CodeLength    int     `json:"code_length"`
+		MaxCodes      int     `json:"max_codes"`
+		ValidDays     int     `json:"valid_days"`
+		Description   string  `json:"description"`
+	}
+	if err := decodeJSON(r, &input); err != nil {
+		jsonError(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	input.PromoCode = strings.TrimSpace(strings.ToLower(input.PromoCode))
+
+	// Check duplicate promo_code (excluding self)
+	if input.PromoCode != "" {
+		var existing models.PromoCampaign
+		if database.DB.Where("project_id = ? AND promo_code = ? AND id != ?", projectID, input.PromoCode, campaignID).First(&existing).Error == nil {
+			jsonError(w, "promo code already exists for this project", http.StatusConflict)
+			return
+		}
+	}
+
+	if input.IsDefault && !campaign.IsDefault {
+		database.DB.Model(&models.PromoCampaign{}).Where("project_id = ? AND is_default = ? AND id != ?", projectID, true, campaignID).
+			Update("is_default", false)
+	}
+
+	campaign.PromoCode = input.PromoCode
+	campaign.IsDefault = input.IsDefault
 	campaign.Enabled = input.Enabled
 	campaign.DiscountType = models.DiscountType(input.DiscountType)
 	campaign.DiscountValue = input.DiscountValue
@@ -93,41 +189,57 @@ func SavePromoCampaign(w http.ResponseWriter, r *http.Request) {
 	campaign.ValidDays = input.ValidDays
 	campaign.Description = input.Description
 
-	if campaign.ID == "" {
-		database.DB.Create(&campaign)
-	} else {
-		database.DB.Save(&campaign)
+	database.DB.Save(&campaign)
+	jsonResponse(w, campaign, http.StatusOK)
+}
+
+// DeletePromoCampaign deletes a campaign
+func DeletePromoCampaign(w http.ResponseWriter, r *http.Request) {
+	projectID := chi.URLParam(r, "id")
+	campaignID := chi.URLParam(r, "cid")
+	user := middleware.GetUser(r)
+
+	var project models.Project
+	if err := database.DB.Where("id = ? AND user_id = ?", projectID, user.ID).First(&project).Error; err != nil {
+		jsonError(w, "project not found", http.StatusNotFound)
+		return
 	}
 
-	jsonResponse(w, campaign, http.StatusOK)
+	database.DB.Where("id = ? AND project_id = ?", campaignID, projectID).Delete(&models.PromoCampaign{})
+	jsonResponse(w, map[string]string{"message": "deleted"}, http.StatusOK)
 }
 
 // ListCouponCodes lists all coupon codes for a project
 func ListCouponCodes(w http.ResponseWriter, r *http.Request) {
 	projectID := chi.URLParam(r, "id")
-	userID := r.Context().Value("user_id").(string)
+	user := middleware.GetUser(r)
 
 	var project models.Project
-	if err := database.DB.Where("id = ? AND user_id = ?", projectID, userID).First(&project).Error; err != nil {
+	if err := database.DB.Where("id = ? AND user_id = ?", projectID, user.ID).First(&project).Error; err != nil {
 		jsonError(w, "project not found", http.StatusNotFound)
 		return
 	}
 
 	status := r.URL.Query().Get("status")
 	search := r.URL.Query().Get("search")
+	campaignFilter := r.URL.Query().Get("campaign_id")
 	page := queryInt(r, "page", 1)
 	limit := queryInt(r, "limit", 50)
 	offset := (page - 1) * limit
 
 	query := database.DB.Where("coupon_codes.project_id = ?", projectID).
-		Preload("Subscriber")
+		Preload("Subscriber").Preload("Campaign")
 
 	if status != "" {
 		query = query.Where("coupon_codes.status = ?", status)
 	}
+	if campaignFilter != "" {
+		query = query.Where("coupon_codes.campaign_id = ?", campaignFilter)
+	}
 	if search != "" {
 		query = query.Joins("JOIN subscribers ON subscribers.id = coupon_codes.subscriber_id").
-			Where("coupon_codes.code ILIKE ? OR subscribers.email ILIKE ?", "%"+search+"%", "%"+search+"%")
+			Where("coupon_codes.code ILIKE ? OR subscribers.email ILIKE ? OR coupon_codes.source_code ILIKE ?",
+				"%"+search+"%", "%"+search+"%", "%"+search+"%")
 	}
 
 	var total int64
@@ -136,7 +248,7 @@ func ListCouponCodes(w http.ResponseWriter, r *http.Request) {
 	var codes []models.CouponCode
 	query.Order("coupon_codes.created_at DESC").Offset(offset).Limit(limit).Find(&codes)
 
-	// Auto-expire codes past their expiry
+	// Auto-expire
 	now := time.Now()
 	for i, c := range codes {
 		if c.Status == models.CouponActive && c.ExpiresAt != nil && c.ExpiresAt.Before(now) {
@@ -156,10 +268,10 @@ func ListCouponCodes(w http.ResponseWriter, r *http.Request) {
 func RevokeCouponCode(w http.ResponseWriter, r *http.Request) {
 	projectID := chi.URLParam(r, "id")
 	couponID := chi.URLParam(r, "cid")
-	userID := r.Context().Value("user_id").(string)
+	user := middleware.GetUser(r)
 
 	var project models.Project
-	if err := database.DB.Where("id = ? AND user_id = ?", projectID, userID).First(&project).Error; err != nil {
+	if err := database.DB.Where("id = ? AND user_id = ?", projectID, user.ID).First(&project).Error; err != nil {
 		jsonError(w, "project not found", http.StatusNotFound)
 		return
 	}
@@ -180,7 +292,7 @@ func RevokeCouponCode(w http.ResponseWriter, r *http.Request) {
 
 // APIValidateCoupon validates a coupon code and returns discount info
 func APIValidateCoupon(w http.ResponseWriter, r *http.Request) {
-	projectID := r.Context().Value("project_id").(string)
+	projectID := getAPIProjectID(r)
 	code := r.URL.Query().Get("code")
 
 	if code == "" {
@@ -195,7 +307,7 @@ func APIValidateCoupon(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Auto-expire if past expiry
+	// Auto-expire
 	if coupon.Status == models.CouponActive && coupon.ExpiresAt != nil && coupon.ExpiresAt.Before(time.Now()) {
 		coupon.Status = models.CouponExpired
 		database.DB.Model(&coupon).Update("status", models.CouponExpired)
@@ -206,6 +318,7 @@ func APIValidateCoupon(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, map[string]interface{}{
 		"valid":          valid,
 		"code":           coupon.Code,
+		"source_code":    coupon.SourceCode,
 		"status":         coupon.Status,
 		"discount_type":  coupon.DiscountType,
 		"discount_value": coupon.DiscountValue,
@@ -221,7 +334,7 @@ func APIValidateCoupon(w http.ResponseWriter, r *http.Request) {
 
 // APIUpdateCouponStatus updates the status of a coupon code via REST API
 func APIUpdateCouponStatus(w http.ResponseWriter, r *http.Request) {
-	projectID := r.Context().Value("project_id").(string)
+	projectID := getAPIProjectID(r)
 	code := chi.URLParam(r, "code")
 
 	var input struct {
@@ -251,12 +364,12 @@ func APIUpdateCouponStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	database.DB.Save(&coupon)
 
-	// Fire webhook if status changed to "used"
 	if input.Status == "used" {
 		go fireWebhooks(projectID, "coupon.redeemed", map[string]interface{}{
-			"coupon_code":   coupon.Code,
-			"subscriber_id": coupon.SubscriberID,
-			"discount_type": coupon.DiscountType,
+			"coupon_code":    coupon.Code,
+			"source_code":    coupon.SourceCode,
+			"subscriber_id":  coupon.SubscriberID,
+			"discount_type":  coupon.DiscountType,
 			"discount_value": coupon.DiscountValue,
 		})
 	}
@@ -264,17 +377,35 @@ func APIUpdateCouponStatus(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, coupon, http.StatusOK)
 }
 
-// GenerateCouponForSubscriber creates a coupon code for a new subscriber if promo is enabled
-func GenerateCouponForSubscriber(projectID, subscriberID string) *models.CouponCode {
+// GenerateCouponForSubscriber creates a coupon code for a new subscriber
+// promoCode is the trigger code passed by the subscriber (e.g., "get5")
+func GenerateCouponForSubscriber(projectID, subscriberID, promoCode string) *models.CouponCode {
 	var campaign models.PromoCampaign
-	if err := database.DB.Where("project_id = ? AND enabled = true", projectID).First(&campaign).Error; err != nil {
-		return nil
+
+	promoCode = strings.TrimSpace(strings.ToLower(promoCode))
+
+	if promoCode != "" {
+		// Try to match specific campaign by promo code
+		if err := database.DB.Where("project_id = ? AND promo_code = ? AND enabled = true", projectID, promoCode).
+			First(&campaign).Error; err != nil {
+			// No matching campaign for this code, try default
+			if err := database.DB.Where("project_id = ? AND is_default = true AND enabled = true", projectID).
+				First(&campaign).Error; err != nil {
+				return nil
+			}
+		}
+	} else {
+		// No promo code provided, use default campaign
+		if err := database.DB.Where("project_id = ? AND is_default = true AND enabled = true", projectID).
+			First(&campaign).Error; err != nil {
+			return nil
+		}
 	}
 
 	// Check max codes limit
 	if campaign.MaxCodes > 0 {
 		var count int64
-		database.DB.Model(&models.CouponCode{}).Where("project_id = ?", projectID).Count(&count)
+		database.DB.Model(&models.CouponCode{}).Where("campaign_id = ?", campaign.ID).Count(&count)
 		if int(count) >= campaign.MaxCodes {
 			return nil
 		}
@@ -284,8 +415,10 @@ func GenerateCouponForSubscriber(projectID, subscriberID string) *models.CouponC
 
 	coupon := models.CouponCode{
 		ProjectID:     projectID,
+		CampaignID:    campaign.ID,
 		SubscriberID:  subscriberID,
 		Code:          code,
+		SourceCode:    promoCode,
 		Status:        models.CouponActive,
 		DiscountType:  campaign.DiscountType,
 		DiscountValue: campaign.DiscountValue,

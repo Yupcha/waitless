@@ -20,6 +20,7 @@ type signupRequest struct {
 	Email  string `json:"email"`
 	Name   string `json:"name"`
 	Source string `json:"source"`
+	Promo  string `json:"promo"`
 }
 
 func PublicSignup(w http.ResponseWriter, r *http.Request) {
@@ -102,15 +103,18 @@ func PublicSignup(w http.ResponseWriter, r *http.Request) {
 	// Send welcome email async
 	baseURL := getBaseURL(r)
 	go func() {
+		// Only attempt if SMTP is configured
+		if project.SMTP == nil || project.SMTP.Host == "" {
+			return
+		}
+
 		emailSvc := services.NewEmailService()
 		emailStatus := models.EmailSent
 		errMsg := ""
 
-		if project.SMTP != nil && project.SMTP.Host != "" {
-			if err := emailSvc.SendWelcome(project.SMTP, &project, &subscriber, baseURL); err != nil {
-				emailStatus = models.EmailFailed
-				errMsg = err.Error()
-			}
+		if err := emailSvc.SendWelcome(project.SMTP, &project, &subscriber, baseURL); err != nil {
+			emailStatus = models.EmailFailed
+			errMsg = err.Error()
 		}
 
 		log := models.EmailLog{
@@ -130,7 +134,10 @@ func PublicSignup(w http.ResponseWriter, r *http.Request) {
 	go fireWebhooks(project.ID, "subscriber.created", subscriber)
 
 	// Generate coupon code if promo campaign is enabled
-	coupon := GenerateCouponForSubscriber(project.ID, subscriber.ID)
+	coupon := GenerateCouponForSubscriber(project.ID, subscriber.ID, req.Promo)
+
+	// Geo-lookup country async
+	go services.UpdateSubscriberCountry(subscriber.ID, strings.Split(r.RemoteAddr, ":")[0])
 
 	resp := map[string]interface{}{
 		"message":    "subscribed",
@@ -222,6 +229,10 @@ func ListSubscribers(w http.ResponseWriter, r *http.Request) {
 	}
 	if statusFilter != "" {
 		q = q.Where("status = ?", statusFilter)
+	}
+	countryFilter := r.URL.Query().Get("country")
+	if countryFilter != "" {
+		q = q.Where("country = ?", strings.ToUpper(countryFilter))
 	}
 
 	if sortDir != "asc" {

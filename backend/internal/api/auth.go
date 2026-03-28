@@ -28,6 +28,11 @@ type loginRequest struct {
 }
 
 func Register(w http.ResponseWriter, r *http.Request) {
+	if os.Getenv("DISABLE_REGISTRATION") == "true" {
+		jsonError(w, "registration is disabled", http.StatusForbidden)
+		return
+	}
+
 	var req registerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		jsonError(w, "invalid request", http.StatusBadRequest)

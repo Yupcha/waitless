@@ -123,9 +123,11 @@ func NewRouter(version string, startTime time.Time) http.Handler {
 		// Widget
 		r.Get("/projects/{id}/widget", GetWidgetCode)
 
-		// Coupons / Promo
-		r.Get("/projects/{id}/promo", GetPromoCampaign)
-		r.Put("/projects/{id}/promo", SavePromoCampaign)
+		// Coupons / Promo Campaigns
+		r.Get("/projects/{id}/campaigns", ListPromoCampaigns)
+		r.Post("/projects/{id}/campaigns", CreatePromoCampaign)
+		r.Put("/projects/{id}/campaigns/{cid}", UpdatePromoCampaign)
+		r.Delete("/projects/{id}/campaigns/{cid}", DeletePromoCampaign)
 		r.Get("/projects/{id}/coupons", ListCouponCodes)
 		r.Patch("/projects/{id}/coupons/{cid}/revoke", RevokeCouponCode)
 	})
