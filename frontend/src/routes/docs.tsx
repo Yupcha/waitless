@@ -182,6 +182,8 @@ Content-Type: application/json`}</CodeBlock>
               ['<code>email</code>', 'string', '✅', 'Subscriber email'],
               ['<code>name</code>', 'string', '✅', 'Subscriber name'],
               ['<code>source</code>', 'string', '—', '<code>form</code>, <code>api</code>, or <code>widget</code>'],
+              ['<code>promo</code>', 'string', '—', 'Promo campaign trigger code (e.g. <code>get5</code>)'],
+              ['<code>custom_data</code>', 'object', '—', 'Custom field responses as key-value pairs'],
             ]}
           />
           <CodeBlock>{`// Response 201
@@ -190,9 +192,21 @@ Content-Type: application/json`}</CodeBlock>
   "subscriber": {
     "id": "AbPjb8GbmjcJ",
     "email": "user@example.com",
-    "status": "active"
+    "status": "active",
+    "country": "US"
+  },
+  "coupon": {
+    "code": "EARLY-xK9mP2qr",
+    "discount_type": "flat",
+    "discount_value": 5.00,
+    "currency": "USD",
+    "expires_at": "2026-04-28T00:00:00Z"
   }
 }`}</CodeBlock>
+          <Callout type="info">
+            The <strong>coupon</strong> field only appears if a matching promo campaign is configured for the project. 
+            The <strong>country</strong> field is populated asynchronously via IP geolocation.
+          </Callout>
           <Table
             headers={['Code', 'Message']}
             rows={[
@@ -204,11 +218,11 @@ Content-Type: application/json`}</CodeBlock>
 
           <H3>Get Project</H3>
           <CodeBlock>{`GET /api/public/w/{slug}`}</CodeBlock>
-          <P>Returns public project info and subscriber count for rendering landing pages.</P>
+          <P>Returns public project info, subscriber count, and custom field definitions for rendering landing pages.</P>
 
           <H3>Unsubscribe</H3>
           <CodeBlock>{`GET /api/public/unsubscribe?token={unsubscribe_token}`}</CodeBlock>
-          <P>Each subscriber has a unique token. Marks as unsubscribed and fires the webhook.</P>
+          <P>Each subscriber has a unique token. Marks as unsubscribed, fires the webhook, and sends a Telegram notification (if configured).</P>
 
           {/* REST API */}
           <H2 id="rest-api">REST API v1</H2>
@@ -251,6 +265,7 @@ Content-Type: application/json
           <CodeBlock>{`{
   "valid": true,
   "code": "EARLY-xK9mP2qr",
+  "source_code": "get5",
   "status": "active",
   "discount_type": "flat",
   "discount_value": 5.00,
@@ -307,7 +322,7 @@ Content-Type: application/json
             ['<code>DELETE</code>', '<code>.../subscribers/{subId}</code>', 'Delete subscriber'],
           ]} />
 
-          <H3>SMTP, Webhooks, API Keys & More</H3>
+          <H3>SMTP, Webhooks, Telegram, Coupons & More</H3>
           <Table headers={['Method', 'Endpoint', 'Description']} rows={[
             ['<code>GET/PUT</code>', '<code>.../smtp</code>', 'SMTP config'],
             ['<code>POST</code>', '<code>.../smtp/test</code>', 'Test SMTP'],
@@ -315,6 +330,10 @@ Content-Type: application/json
             ['<code>GET/POST</code>', '<code>.../api-keys</code>', 'API keys'],
             ['<code>GET</code>', '<code>.../emails</code>', 'Email logs'],
             ['<code>POST</code>', '<code>.../emails/broadcast</code>', 'Send broadcast'],
+            ['<code>GET/POST/PUT/DELETE</code>', '<code>.../campaigns</code>', 'Promo campaigns CRUD'],
+            ['<code>GET</code>', '<code>.../coupons</code>', 'List coupon codes'],
+            ['<code>GET/PUT</code>', '<code>.../telegram</code>', 'Telegram notification config'],
+            ['<code>POST</code>', '<code>.../telegram/test</code>', 'Send test Telegram message'],
           ]} />
 
           <H3>Admin (admin role only)</H3>
@@ -363,6 +382,7 @@ Backing up to backup.sql...
           <Table headers={['Variable', 'Description']} rows={[
             ['<code>DATABASE_URL</code>', 'PostgreSQL connection string'],
             ['<code>ENCRYPTION_KEY</code>', 'For encrypted fields (SMTP passwords)'],
+            ['<code>DISABLE_REGISTRATION</code>', 'Set to <code>true</code> to block new account signups'],
           ]} />
 
           {/* Footer */}

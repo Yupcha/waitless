@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { subscribersApi } from '@/lib/api'
-import { useState } from 'react'
-import { Search, Download, Trash2, UserX, UserCheck, ChevronLeft, ChevronRight } from 'lucide-react'
+import React, { useState } from 'react'
+import { Search, Download, Trash2, UserX, UserCheck, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatDate } from '@/lib/utils'
 
@@ -19,6 +19,7 @@ function SubscribersPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [countryFilter, setCountryFilter] = useState('')
   const [selected, setSelected] = useState<string[]>([])
+  const [expanded, setExpanded] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['subscribers', id, page, search, statusFilter, countryFilter],
@@ -135,11 +136,18 @@ function SubscribersPage() {
               ) : subscribers.length === 0 ? (
                 <tr><td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>No subscribers found</td></tr>
               ) : subscribers.map((s: any) => (
-                <tr key={s.id}>
+                <React.Fragment key={s.id}>
+                <tr>
                   <td>
                     <input type="checkbox" checked={selected.includes(s.id)} onChange={() => toggleSelect(s.id)} style={{ cursor: 'pointer' }} />
                   </td>
-                  <td style={{ color: '#e2e8f0', fontWeight: 500 }}>{s.name || '—'}</td>
+                  <td style={{ color: '#e2e8f0', fontWeight: 500, cursor: 'pointer' }}
+                    onClick={() => setExpanded(expanded === s.id ? null : s.id)}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {s.custom_data && <ChevronDown size={12} color="#475569" style={{ transform: expanded === s.id ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />}
+                      {s.name || '—'}
+                    </div>
+                  </td>
                   <td style={{ color: '#94a3b8' }}>{s.email}</td>
                   <td>
                     <span className={`badge ${s.status === 'active' ? 'badge-green' : 'badge-gray'}`}>
@@ -164,6 +172,28 @@ function SubscribersPage() {
                     </button>
                   </td>
                 </tr>
+                {expanded === s.id && s.custom_data && (() => {
+                  try {
+                    const cd = typeof s.custom_data === 'string' ? JSON.parse(s.custom_data) : s.custom_data
+                    const entries = Object.entries(cd)
+                    if (entries.length === 0) return null
+                    return (
+                      <tr>
+                        <td colSpan={8} style={{ padding: '8px 16px 12px 48px', background: 'rgba(99,102,241,0.03)' }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px' }}>
+                            {entries.map(([k, v]) => (
+                              <div key={k} style={{ fontSize: 12 }}>
+                                <span style={{ color: '#475569', fontWeight: 500 }}>{k}:</span>{' '}
+                                <span style={{ color: '#94a3b8' }}>{String(v)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  } catch { return null }
+                })()}
+                </React.Fragment>
               ))}
             </tbody>
           </table>

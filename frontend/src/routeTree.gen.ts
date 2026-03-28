@@ -29,6 +29,7 @@ import { Route as DashboardAdminProjectsRouteImport } from './routes/dashboard.a
 import { Route as DashboardProjectsIdIndexRouteImport } from './routes/dashboard.projects.$id.index'
 import { Route as DashboardProjectsIdWidgetRouteImport } from './routes/dashboard.projects.$id.widget'
 import { Route as DashboardProjectsIdWebhooksRouteImport } from './routes/dashboard.projects.$id.webhooks'
+import { Route as DashboardProjectsIdTelegramRouteImport } from './routes/dashboard.projects.$id.telegram'
 import { Route as DashboardProjectsIdSubscribersRouteImport } from './routes/dashboard.projects.$id.subscribers'
 import { Route as DashboardProjectsIdSmtpRouteImport } from './routes/dashboard.projects.$id.smtp'
 import { Route as DashboardProjectsIdSettingsRouteImport } from './routes/dashboard.projects.$id.settings'
@@ -139,6 +140,12 @@ const DashboardProjectsIdWebhooksRoute =
     path: '/webhooks',
     getParentRoute: () => DashboardProjectsIdRoute,
   } as any)
+const DashboardProjectsIdTelegramRoute =
+  DashboardProjectsIdTelegramRouteImport.update({
+    id: '/telegram',
+    path: '/telegram',
+    getParentRoute: () => DashboardProjectsIdRoute,
+  } as any)
 const DashboardProjectsIdSubscribersRoute =
   DashboardProjectsIdSubscribersRouteImport.update({
     id: '/subscribers',
@@ -199,6 +206,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/projects/$id/settings': typeof DashboardProjectsIdSettingsRoute
   '/dashboard/projects/$id/smtp': typeof DashboardProjectsIdSmtpRoute
   '/dashboard/projects/$id/subscribers': typeof DashboardProjectsIdSubscribersRoute
+  '/dashboard/projects/$id/telegram': typeof DashboardProjectsIdTelegramRoute
   '/dashboard/projects/$id/webhooks': typeof DashboardProjectsIdWebhooksRoute
   '/dashboard/projects/$id/widget': typeof DashboardProjectsIdWidgetRoute
   '/dashboard/projects/$id/': typeof DashboardProjectsIdIndexRoute
@@ -224,6 +232,7 @@ export interface FileRoutesByTo {
   '/dashboard/projects/$id/settings': typeof DashboardProjectsIdSettingsRoute
   '/dashboard/projects/$id/smtp': typeof DashboardProjectsIdSmtpRoute
   '/dashboard/projects/$id/subscribers': typeof DashboardProjectsIdSubscribersRoute
+  '/dashboard/projects/$id/telegram': typeof DashboardProjectsIdTelegramRoute
   '/dashboard/projects/$id/webhooks': typeof DashboardProjectsIdWebhooksRoute
   '/dashboard/projects/$id/widget': typeof DashboardProjectsIdWidgetRoute
   '/dashboard/projects/$id': typeof DashboardProjectsIdIndexRoute
@@ -253,6 +262,7 @@ export interface FileRoutesById {
   '/dashboard/projects/$id/settings': typeof DashboardProjectsIdSettingsRoute
   '/dashboard/projects/$id/smtp': typeof DashboardProjectsIdSmtpRoute
   '/dashboard/projects/$id/subscribers': typeof DashboardProjectsIdSubscribersRoute
+  '/dashboard/projects/$id/telegram': typeof DashboardProjectsIdTelegramRoute
   '/dashboard/projects/$id/webhooks': typeof DashboardProjectsIdWebhooksRoute
   '/dashboard/projects/$id/widget': typeof DashboardProjectsIdWidgetRoute
   '/dashboard/projects/$id/': typeof DashboardProjectsIdIndexRoute
@@ -283,6 +293,7 @@ export interface FileRouteTypes {
     | '/dashboard/projects/$id/settings'
     | '/dashboard/projects/$id/smtp'
     | '/dashboard/projects/$id/subscribers'
+    | '/dashboard/projects/$id/telegram'
     | '/dashboard/projects/$id/webhooks'
     | '/dashboard/projects/$id/widget'
     | '/dashboard/projects/$id/'
@@ -308,6 +319,7 @@ export interface FileRouteTypes {
     | '/dashboard/projects/$id/settings'
     | '/dashboard/projects/$id/smtp'
     | '/dashboard/projects/$id/subscribers'
+    | '/dashboard/projects/$id/telegram'
     | '/dashboard/projects/$id/webhooks'
     | '/dashboard/projects/$id/widget'
     | '/dashboard/projects/$id'
@@ -336,6 +348,7 @@ export interface FileRouteTypes {
     | '/dashboard/projects/$id/settings'
     | '/dashboard/projects/$id/smtp'
     | '/dashboard/projects/$id/subscribers'
+    | '/dashboard/projects/$id/telegram'
     | '/dashboard/projects/$id/webhooks'
     | '/dashboard/projects/$id/widget'
     | '/dashboard/projects/$id/'
@@ -495,6 +508,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardProjectsIdWebhooksRouteImport
       parentRoute: typeof DashboardProjectsIdRoute
     }
+    '/dashboard/projects/$id/telegram': {
+      id: '/dashboard/projects/$id/telegram'
+      path: '/telegram'
+      fullPath: '/dashboard/projects/$id/telegram'
+      preLoaderRoute: typeof DashboardProjectsIdTelegramRouteImport
+      parentRoute: typeof DashboardProjectsIdRoute
+    }
     '/dashboard/projects/$id/subscribers': {
       id: '/dashboard/projects/$id/subscribers'
       path: '/subscribers'
@@ -563,6 +583,7 @@ interface DashboardProjectsIdRouteChildren {
   DashboardProjectsIdSettingsRoute: typeof DashboardProjectsIdSettingsRoute
   DashboardProjectsIdSmtpRoute: typeof DashboardProjectsIdSmtpRoute
   DashboardProjectsIdSubscribersRoute: typeof DashboardProjectsIdSubscribersRoute
+  DashboardProjectsIdTelegramRoute: typeof DashboardProjectsIdTelegramRoute
   DashboardProjectsIdWebhooksRoute: typeof DashboardProjectsIdWebhooksRoute
   DashboardProjectsIdWidgetRoute: typeof DashboardProjectsIdWidgetRoute
   DashboardProjectsIdIndexRoute: typeof DashboardProjectsIdIndexRoute
@@ -575,6 +596,7 @@ const DashboardProjectsIdRouteChildren: DashboardProjectsIdRouteChildren = {
   DashboardProjectsIdSettingsRoute: DashboardProjectsIdSettingsRoute,
   DashboardProjectsIdSmtpRoute: DashboardProjectsIdSmtpRoute,
   DashboardProjectsIdSubscribersRoute: DashboardProjectsIdSubscribersRoute,
+  DashboardProjectsIdTelegramRoute: DashboardProjectsIdTelegramRoute,
   DashboardProjectsIdWebhooksRoute: DashboardProjectsIdWebhooksRoute,
   DashboardProjectsIdWidgetRoute: DashboardProjectsIdWidgetRoute,
   DashboardProjectsIdIndexRoute: DashboardProjectsIdIndexRoute,

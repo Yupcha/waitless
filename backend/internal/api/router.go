@@ -130,6 +130,11 @@ func NewRouter(version string, startTime time.Time) http.Handler {
 		r.Delete("/projects/{id}/campaigns/{cid}", DeletePromoCampaign)
 		r.Get("/projects/{id}/coupons", ListCouponCodes)
 		r.Patch("/projects/{id}/coupons/{cid}/revoke", RevokeCouponCode)
+
+		// Telegram
+		r.Get("/projects/{id}/telegram", GetTelegramConfig)
+		r.Put("/projects/{id}/telegram", SaveTelegramConfig)
+		r.Post("/projects/{id}/telegram/test", TestTelegramConfig)
 	})
 
 	// Admin API

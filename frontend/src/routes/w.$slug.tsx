@@ -13,7 +13,7 @@ export const Route = createFileRoute('/w/$slug')({
 function WaitlistPage() {
   const { slug } = Route.useParams()
   const [submitted, setSubmitted] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '' })
+  const [form, setForm] = useState<Record<string, any>>({ name: '', email: '' })
   const [coupon, setCoupon] = useState<any>(null)
   const [codeCopied, setCodeCopied] = useState(false)
 
@@ -23,8 +23,24 @@ function WaitlistPage() {
     retry: false,
   })
 
+  // Parse custom fields from project
+  const customFields: any[] = (() => {
+    try { return JSON.parse(data?.project?.custom_fields || '[]') } catch { return [] }
+  })()
+
   const signupMutation = useMutation({
-    mutationFn: () => publicApi.subscribe(slug, form),
+    mutationFn: () => {
+      const customData: Record<string, any> = {}
+      customFields.forEach(f => {
+        if (form[`cf_${f.key}`] !== undefined && form[`cf_${f.key}`] !== '') {
+          customData[f.key] = form[`cf_${f.key}`]
+        }
+      })
+      return publicApi.subscribe(slug, {
+        name: form.name, email: form.email,
+        ...(Object.keys(customData).length > 0 ? { custom_data: customData } : {}),
+      })
+    },
     onSuccess: (res: any) => {
       setSubmitted(true)
       if (res.data?.coupon) setCoupon(res.data.coupon)
@@ -229,6 +245,41 @@ function WaitlistPage() {
                         value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                         required style={{ paddingLeft: 36 }} />
                     </div>
+
+                    {/* Custom fields */}
+                    {customFields.map((cf: any) => (
+                      <div key={cf.key}>
+                        {cf.type === 'text' && (
+                          <input className="input" placeholder={cf.placeholder || cf.label}
+                            value={form[`cf_${cf.key}`] || ''}
+                            onChange={e => setForm(f => ({ ...f, [`cf_${cf.key}`]: e.target.value }))}
+                            required={cf.required} />
+                        )}
+                        {cf.type === 'textarea' && (
+                          <textarea className="input" placeholder={cf.placeholder || cf.label} rows={3}
+                            value={form[`cf_${cf.key}`] || ''}
+                            onChange={e => setForm(f => ({ ...f, [`cf_${cf.key}`]: e.target.value }))}
+                            required={cf.required} style={{ resize: 'vertical' }} />
+                        )}
+                        {cf.type === 'select' && (
+                          <select className="input" value={form[`cf_${cf.key}`] || ''}
+                            onChange={e => setForm(f => ({ ...f, [`cf_${cf.key}`]: e.target.value }))}
+                            required={cf.required}>
+                            <option value="">{cf.placeholder || cf.label}</option>
+                            {(cf.options || []).map((o: string) => (
+                              <option key={o} value={o}>{o}</option>
+                            ))}
+                          </select>
+                        )}
+                        {cf.type === 'checkbox' && (
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                            <input type="checkbox" checked={!!form[`cf_${cf.key}`]}
+                              onChange={e => setForm(f => ({ ...f, [`cf_${cf.key}`]: e.target.checked }))} />
+                            <span style={{ fontSize: 14, color: '#94a3b8' }}>{cf.label}</span>
+                          </label>
+                        )}
+                      </div>
+                    ))}
 
                     <button type="submit" className="btn-primary"
                       style={{

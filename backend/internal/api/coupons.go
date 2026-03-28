@@ -9,6 +9,7 @@ import (
 	"github.com/waitless/waitless/internal/database"
 	middleware "github.com/waitless/waitless/internal/middleware"
 	"github.com/waitless/waitless/internal/models"
+	"github.com/waitless/waitless/internal/services"
 )
 
 // ============ Dashboard Handlers ============
@@ -372,6 +373,12 @@ func APIUpdateCouponStatus(w http.ResponseWriter, r *http.Request) {
 			"discount_type":  coupon.DiscountType,
 			"discount_value": coupon.DiscountValue,
 		})
+		// Telegram notification
+		go func() {
+			var sub models.Subscriber
+			database.DB.Where("id = ?", coupon.SubscriberID).First(&sub)
+			services.NotifyCouponRedeemed(projectID, coupon.Code, sub.Email)
+		}()
 	}
 
 	jsonResponse(w, coupon, http.StatusOK)

@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { projectsApi } from '@/lib/api'
-import { ArrowLeft, Globe, BarChart3, Users, Key, Code2, Settings, Mail, Webhook, Gift } from 'lucide-react'
+import { ArrowLeft, Globe, BarChart3, Users, Key, Code2, Settings, Mail, Webhook, Gift, Send } from 'lucide-react'
 
 export const Route = createFileRoute('/dashboard/projects/$id')({
   component: ProjectLayout,
@@ -23,6 +23,7 @@ function ProjectLayout() {
     { to: `/dashboard/projects/${id}/api-keys`, label: 'API Keys', icon: Key },
     { to: `/dashboard/projects/${id}/webhooks`, label: 'Webhooks', icon: Webhook },
     { to: `/dashboard/projects/${id}/coupons`, label: 'Coupons', icon: Gift },
+    { to: `/dashboard/projects/${id}/telegram`, label: 'Telegram', icon: Send },
     { to: `/dashboard/projects/${id}/widget`, label: 'Widget', icon: Code2 },
     { to: `/dashboard/projects/${id}/settings`, label: 'Settings', icon: Settings },
   ]

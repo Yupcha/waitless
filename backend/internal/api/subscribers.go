@@ -17,10 +17,19 @@ import (
 )
 
 type signupRequest struct {
-	Email  string `json:"email"`
-	Name   string `json:"name"`
-	Source string `json:"source"`
-	Promo  string `json:"promo"`
+	Email      string                 `json:"email"`
+	Name       string                 `json:"name"`
+	Source     string                 `json:"source"`
+	Promo      string                 `json:"promo"`
+	CustomData map[string]interface{} `json:"custom_data"`
+}
+
+type customFieldDef struct {
+	Key      string   `json:"key"`
+	Label    string   `json:"label"`
+	Type     string   `json:"type"` // text, textarea, select, checkbox
+	Required bool     `json:"required"`
+	Options  []string `json:"options,omitempty"`
 }
 
 func PublicSignup(w http.ResponseWriter, r *http.Request) {
@@ -74,13 +83,35 @@ func PublicSignup(w http.ResponseWriter, r *http.Request) {
 		status = models.StatusPending
 	}
 
+	// Validate and store custom data
+	var customDataJSON string
+	if project.CustomFields != "" && project.CustomFields != "[]" {
+		var fields []customFieldDef
+		if err := json.Unmarshal([]byte(project.CustomFields), &fields); err == nil {
+			for _, f := range fields {
+				if f.Required {
+					val, exists := req.CustomData[f.Key]
+					if !exists || val == nil || val == "" {
+						jsonError(w, f.Label+" is required", http.StatusBadRequest)
+						return
+					}
+				}
+			}
+		}
+		if len(req.CustomData) > 0 {
+			b, _ := json.Marshal(req.CustomData)
+			customDataJSON = string(b)
+		}
+	}
+
 	subscriber := models.Subscriber{
-		ProjectID: project.ID,
-		Email:     req.Email,
-		Name:      req.Name,
-		Status:    status,
-		Source:    source,
-		IPAddress: strings.Split(r.RemoteAddr, ":")[0],
+		ProjectID:  project.ID,
+		Email:      req.Email,
+		Name:       req.Name,
+		Status:     status,
+		Source:     source,
+		IPAddress:  strings.Split(r.RemoteAddr, ":")[0],
+		CustomData: customDataJSON,
 	}
 
 	if err := database.DB.Create(&subscriber).Error; err != nil {
@@ -139,6 +170,9 @@ func PublicSignup(w http.ResponseWriter, r *http.Request) {
 	// Geo-lookup country async
 	go services.UpdateSubscriberCountry(subscriber.ID, strings.Split(r.RemoteAddr, ":")[0])
 
+	// Telegram notification async
+	go services.NotifyNewSubscriber(project.ID, project.Name, subscriber.Email, subscriber.Name, req.Promo)
+
 	resp := map[string]interface{}{
 		"message":    "subscribed",
 		"subscriber": subscriber,
@@ -174,6 +208,7 @@ func HandleUnsubscribe(w http.ResponseWriter, r *http.Request) {
 
 	// Fire webhook
 	go fireWebhooks(subscriber.ProjectID, "subscriber.unsubscribed", subscriber)
+	go services.NotifyUnsubscribe(subscriber.ProjectID, subscriber.Email)
 
 	// Return a simple HTML page
 	w.Header().Set("Content-Type", "text/html")

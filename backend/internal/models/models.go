@@ -263,6 +263,28 @@ func (wh *Webhook) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
+// TelegramConfig holds per-project Telegram notification settings
+type TelegramConfig struct {
+	ID               string `json:"id" gorm:"type:varchar(12);primaryKey"`
+	ProjectID        string `json:"project_id" gorm:"type:varchar(12);not null;index"`
+	BotToken         string `json:"bot_token"`
+	ChatID           string `json:"chat_id"`
+	Enabled          bool   `json:"enabled" gorm:"default:false"`
+	NotifySignup     bool   `json:"notify_signup" gorm:"default:true"`     // new subscriber
+	NotifyCoupon     bool   `json:"notify_coupon" gorm:"default:false"`    // coupon redeemed
+	NotifyUnsubscribe bool  `json:"notify_unsubscribe" gorm:"default:false"`
+	CampaignFilter   string `json:"campaign_filter"`                       // optional: only for specific promo codes (comma-separated), empty = all
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
+
+func (t *TelegramConfig) BeforeCreate(tx *gorm.DB) error {
+	if t.ID == "" {
+		t.ID = NewID()
+	}
+	return nil
+}
+
 // CouponStatus tracks the lifecycle of a coupon code
 type CouponStatus string
 
