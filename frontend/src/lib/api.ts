@@ -9,7 +9,14 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
-      window.location.href = '/login'
+      const url = err.config?.url || ''
+      const path = window.location.pathname
+      // Don't redirect if already on auth pages or if it's a /me check
+      const isAuthPage = path === '/login' || path === '/register' || path === '/reset-password'
+      const isMeCheck = url.includes('/auth/me')
+      if (!isAuthPage && !isMeCheck) {
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(err)
   }
