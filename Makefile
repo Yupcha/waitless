@@ -9,6 +9,7 @@ run: kill clean build
 # Build production binary
 build:
 	@echo "Building frontend..."
+	@cd frontend && bun install --frozen-lockfile 2>/dev/null || cd frontend && bun install
 	@cd frontend && bun run build
 	@echo "Copying dist to backend embed..."
 	@rm -rf backend/cmd/server/dist
