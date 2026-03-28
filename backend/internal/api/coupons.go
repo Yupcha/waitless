@@ -73,6 +73,7 @@ func CreatePromoCampaign(w http.ResponseWriter, r *http.Request) {
 		CodeLength    int     `json:"code_length"`
 		MaxCodes      int     `json:"max_codes"`
 		ValidDays     int     `json:"valid_days"`
+		DeliveryMethod string `json:"delivery_method"`
 		Description   string  `json:"description"`
 	}
 	if err := decodeJSON(r, &input); err != nil {
@@ -119,6 +120,7 @@ func CreatePromoCampaign(w http.ResponseWriter, r *http.Request) {
 		CodeLength:    input.CodeLength,
 		MaxCodes:      input.MaxCodes,
 		ValidDays:     input.ValidDays,
+		DeliveryMethod: input.DeliveryMethod,
 		Description:   input.Description,
 	}
 
@@ -155,6 +157,7 @@ func UpdatePromoCampaign(w http.ResponseWriter, r *http.Request) {
 		CodeLength    int     `json:"code_length"`
 		MaxCodes      int     `json:"max_codes"`
 		ValidDays     int     `json:"valid_days"`
+		DeliveryMethod string `json:"delivery_method"`
 		Description   string  `json:"description"`
 	}
 	if err := decodeJSON(r, &input); err != nil {
@@ -188,6 +191,11 @@ func UpdatePromoCampaign(w http.ResponseWriter, r *http.Request) {
 	campaign.CodeLength = input.CodeLength
 	campaign.MaxCodes = input.MaxCodes
 	campaign.ValidDays = input.ValidDays
+	if input.DeliveryMethod != "" {
+		campaign.DeliveryMethod = input.DeliveryMethod
+	} else {
+		campaign.DeliveryMethod = "api"
+	}
 	campaign.Description = input.Description
 
 	database.DB.Save(&campaign)
@@ -386,7 +394,7 @@ func APIUpdateCouponStatus(w http.ResponseWriter, r *http.Request) {
 
 // GenerateCouponForSubscriber creates a coupon code for a new subscriber
 // promoCode is the trigger code passed by the subscriber (e.g., "get5")
-func GenerateCouponForSubscriber(projectID, subscriberID, promoCode string) *models.CouponCode {
+func GenerateCouponForSubscriber(projectID, subscriberID, promoCode string) (*models.CouponCode, *models.PromoCampaign) {
 	var campaign models.PromoCampaign
 
 	promoCode = strings.TrimSpace(strings.ToLower(promoCode))
@@ -398,14 +406,14 @@ func GenerateCouponForSubscriber(projectID, subscriberID, promoCode string) *mod
 			// No matching campaign for this code, try default
 			if err := database.DB.Where("project_id = ? AND is_default = true AND enabled = true", projectID).
 				First(&campaign).Error; err != nil {
-				return nil
+				return nil, nil
 			}
 		}
 	} else {
 		// No promo code provided, use default campaign
 		if err := database.DB.Where("project_id = ? AND is_default = true AND enabled = true", projectID).
 			First(&campaign).Error; err != nil {
-			return nil
+			return nil, nil
 		}
 	}
 
@@ -414,7 +422,7 @@ func GenerateCouponForSubscriber(projectID, subscriberID, promoCode string) *mod
 		var count int64
 		database.DB.Model(&models.CouponCode{}).Where("campaign_id = ?", campaign.ID).Count(&count)
 		if int(count) >= campaign.MaxCodes {
-			return nil
+			return nil, nil
 		}
 	}
 
@@ -438,5 +446,5 @@ func GenerateCouponForSubscriber(projectID, subscriberID, promoCode string) *mod
 	}
 
 	database.DB.Create(&coupon)
-	return &coupon
+	return &coupon, &campaign
 }

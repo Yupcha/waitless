@@ -131,6 +131,9 @@ func PublicSignup(w http.ResponseWriter, r *http.Request) {
 		database.DB.Create(&record)
 	}()
 
+	// Generate coupon code if promo campaign is enabled
+	coupon, campaign := GenerateCouponForSubscriber(project.ID, subscriber.ID, req.Promo)
+
 	// Send welcome email async
 	baseURL := getBaseURL(r)
 	go func() {
@@ -143,7 +146,12 @@ func PublicSignup(w http.ResponseWriter, r *http.Request) {
 		emailStatus := models.EmailSent
 		errMsg := ""
 
-		if err := emailSvc.SendWelcome(project.SMTP, &project, &subscriber, baseURL); err != nil {
+		var emailCoupon *models.CouponCode
+		if coupon != nil && campaign != nil && campaign.DeliveryMethod == "email" {
+			emailCoupon = coupon
+		}
+
+		if err := emailSvc.SendWelcome(project.SMTP, &project, &subscriber, emailCoupon, baseURL); err != nil {
 			emailStatus = models.EmailFailed
 			errMsg = err.Error()
 		}
@@ -164,9 +172,6 @@ func PublicSignup(w http.ResponseWriter, r *http.Request) {
 	// Fire webhooks async
 	go fireWebhooks(project.ID, "subscriber.created", subscriber)
 
-	// Generate coupon code if promo campaign is enabled
-	coupon := GenerateCouponForSubscriber(project.ID, subscriber.ID, req.Promo)
-
 	// Geo-lookup country async
 	go services.UpdateSubscriberCountry(subscriber.ID, strings.Split(r.RemoteAddr, ":")[0])
 
@@ -177,7 +182,7 @@ func PublicSignup(w http.ResponseWriter, r *http.Request) {
 		"message":    "subscribed",
 		"subscriber": subscriber,
 	}
-	if coupon != nil {
+	if coupon != nil && campaign != nil && campaign.DeliveryMethod == "api" {
 		resp["coupon"] = map[string]interface{}{
 			"code":           coupon.Code,
 			"discount_type":  coupon.DiscountType,

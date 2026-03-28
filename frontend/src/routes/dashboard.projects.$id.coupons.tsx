@@ -24,6 +24,7 @@ function CouponsPage() {
     promo_code: '', is_default: false, enabled: true,
     discount_type: 'flat', discount_value: 0, currency: 'USD',
     code_prefix: '', code_length: 8, max_codes: 0, valid_days: 0, description: '',
+    delivery_method: 'api',
   }
   const [form, setForm] = useState(defaultForm)
 
@@ -85,6 +86,7 @@ function CouponsPage() {
       currency: c.currency || 'USD', code_prefix: c.code_prefix || '',
       code_length: c.code_length || 8, max_codes: c.max_codes || 0,
       valid_days: c.valid_days || 0, description: c.description || '',
+      delivery_method: c.delivery_method || 'api',
     })
     setShowForm(true)
   }
@@ -174,11 +176,20 @@ function CouponsPage() {
                 onChange={e => setForm(f => ({ ...f, valid_days: +e.target.value }))} />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#94a3b8', marginBottom: 6 }}>Currency</label>
               <input className="input" value={form.currency}
                 onChange={e => setForm(f => ({ ...f, currency: e.target.value.toUpperCase() }))} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#94a3b8', marginBottom: 6 }}>Delivery Method</label>
+              <select className="input" value={form.delivery_method}
+                onChange={e => setForm(f => ({ ...f, delivery_method: e.target.value }))}>
+                <option value="api">API Response</option>
+                <option value="email">Email Only</option>
+                <option value="none">None (Admin view only)</option>
+              </select>
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#94a3b8', marginBottom: 6 }}>Description</label>

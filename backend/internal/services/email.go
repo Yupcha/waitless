@@ -63,16 +63,22 @@ func (s *EmailService) Send(req SendEmailRequest) error {
 	return d.DialAndSend(m)
 }
 
-func (s *EmailService) SendWelcome(smtp *models.ProjectSMTP, project *models.Project, subscriber *models.Subscriber, baseURL string) error {
+func (s *EmailService) SendWelcome(smtp *models.ProjectSMTP, project *models.Project, subscriber *models.Subscriber, coupon *models.CouponCode, baseURL string) error {
 	subject := project.WelcomeSubject
 	if subject == "" {
 		subject = fmt.Sprintf("You're on the waitlist for %s! 🎉", project.Name)
 	}
 
 	unsubURL := fmt.Sprintf("%s/api/public/unsubscribe?token=%s", baseURL, subscriber.UnsubscribeToken)
-	html := buildWelcomeEmail(project, subscriber, unsubURL)
-	text := fmt.Sprintf("Hi %s,\n\nYou're on the waitlist for %s!\n\nWe'll be in touch soon.\n\nTo unsubscribe: %s\n\nBest,\nThe %s Team",
-		subscriber.Name, project.Name, unsubURL, project.Name)
+	html := buildWelcomeEmail(project, subscriber, coupon, unsubURL)
+	
+	couponText := ""
+	if coupon != nil {
+		couponText = fmt.Sprintf("\n\nAs a special thanks, here is your promo code:\n%s\n", coupon.Code)
+	}
+	
+	text := fmt.Sprintf("Hi %s,\n\nYou're on the waitlist for %s!\n\nWe'll be in touch soon.%s\n\nTo unsubscribe: %s\n\nBest,\nThe %s Team",
+		subscriber.Name, project.Name, couponText, unsubURL, project.Name)
 
 	return s.Send(SendEmailRequest{
 		SMTP:     smtp,
@@ -84,7 +90,7 @@ func (s *EmailService) SendWelcome(smtp *models.ProjectSMTP, project *models.Pro
 	})
 }
 
-func buildWelcomeEmail(project *models.Project, subscriber *models.Subscriber, unsubURL string) string {
+func buildWelcomeEmail(project *models.Project, subscriber *models.Subscriber, coupon *models.CouponCode, unsubURL string) string {
 	name := subscriber.Name
 	if name == "" {
 		name = "there"
@@ -101,6 +107,18 @@ func buildWelcomeEmail(project *models.Project, subscriber *models.Subscriber, u
 	customMsg := ""
 	if project.WelcomeBody != "" {
 		customMsg = fmt.Sprintf(`<p style="margin:0 0 24px;color:#4b5563;font-size:15px;line-height:1.7;">%s</p>`, project.WelcomeBody)
+	}
+
+	couponHtml := ""
+	if coupon != nil {
+		couponHtml = fmt.Sprintf(`
+		<div style="background:rgba(%s,0.05);border:1px dashed %s;border-radius:12px;padding:24px;text-align:center;margin-bottom:24px;">
+			<p style="margin:0 0 12px;color:#6b7280;font-size:14px;font-weight:500;">Your special promo code</p>
+			<div style="display:inline-block;background:#ffffff;padding:8px 24px;border-radius:8px;border:1px solid #e5e7eb;font-family:monospace;font-size:20px;font-weight:700;color:%s;letter-spacing:1px;">
+				%s
+			</div>
+		</div>
+		`, themeColor, themeColor, themeColor, coupon.Code)
 	}
 
 	return fmt.Sprintf(`<!DOCTYPE html>
@@ -141,6 +159,8 @@ func buildWelcomeEmail(project *models.Project, subscriber *models.Subscriber, u
           
           %s
           
+		  %s
+          
           <!-- CTA Button -->
           <table width="100%%" cellpadding="0" cellspacing="0" role="presentation" style="margin:28px 0;">
             <tr><td align="center">
@@ -177,6 +197,7 @@ func buildWelcomeEmail(project *models.Project, subscriber *models.Subscriber, u
 		name,         // greeting
 		project.Name, // project name
 		customMsg,    // custom welcome message
+		couponHtml,   // the coupon block
 		"#",          // CTA link (project page)
 		themeColor,   // button color
 		project.Name, // button text

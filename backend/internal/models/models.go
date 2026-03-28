@@ -316,6 +316,7 @@ type PromoCampaign struct {
 	CodeLength    int          `json:"code_length" gorm:"default:8"`
 	MaxCodes      int          `json:"max_codes" gorm:"default:0"` // 0 = unlimited
 	ValidDays     int          `json:"valid_days" gorm:"default:0"` // 0 = never expires
+	DeliveryMethod string     `json:"delivery_method" gorm:"default:'api'"` // api, email, none
 	Description   string       `json:"description"`
 	CodesIssued   int64        `json:"codes_issued" gorm:"-"` // virtual field
 	CreatedAt     time.Time    `json:"created_at"`
