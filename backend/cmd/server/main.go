@@ -28,6 +28,9 @@ var (
 )
 
 func main() {
+	// Load .env first — before anything else
+	godotenv.Load()
+
 	// CLI subcommands
 	if len(os.Args) > 1 && os.Args[1] != "serve" {
 		runCLI(os.Args[1:])
@@ -35,9 +38,6 @@ func main() {
 	}
 
 	StartTime = time.Now()
-
-	// Load .env
-	godotenv.Load()
 
 	// Structured logging
 	logLevel := slog.LevelInfo

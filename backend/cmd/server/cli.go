@@ -9,7 +9,6 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/joho/godotenv"
 	"github.com/waitless/waitless/internal/database"
 	"github.com/waitless/waitless/internal/models"
 	"github.com/waitless/waitless/internal/services"
@@ -21,8 +20,6 @@ func runCLI(args []string) {
 		printUsage()
 		os.Exit(0)
 	}
-
-	godotenv.Load()
 
 	switch args[0] {
 	case "users":

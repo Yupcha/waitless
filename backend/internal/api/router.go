@@ -60,7 +60,7 @@ func NewRouter(version string, startTime time.Time) http.Handler {
 		}, status)
 	})
 
-	// Public waitlist API
+	// Public waitlist API (separate rate limiter)
 	r.Route("/api/public", func(r chi.Router) {
 		r.Use(httprate.LimitByIP(20, time.Minute))
 		r.Get("/w/{slug}", GetProjectBySlug)
@@ -70,18 +70,22 @@ func NewRouter(version string, startTime time.Time) http.Handler {
 
 	// Auth routes
 	r.Route("/api/auth", func(r chi.Router) {
-		r.Use(httprate.LimitByIP(10, time.Minute))
-		r.Post("/register", Register)
-		r.Post("/login", Login)
+		// Rate limit only mutation endpoints (login/register/password reset)
+		r.Group(func(r chi.Router) {
+			r.Use(httprate.LimitByIP(10, time.Minute))
+			r.Post("/register", Register)
+			r.Post("/login", Login)
+			r.Post("/forgot-password", ForgotPassword)
+			r.Post("/reset-password", ResetPassword)
+		})
+		// Session endpoints — no rate limit (polled by dashboard)
 		r.Post("/logout", Logout)
-		r.Post("/forgot-password", ForgotPassword)
-		r.Post("/reset-password", ResetPassword)
 		r.With(authmw.AuthRequired).Get("/me", Me)
 		r.With(authmw.AuthRequired).Put("/me", UpdateProfile)
 		r.With(authmw.AuthRequired).Put("/me/password", ChangePassword)
 	})
 
-	// Dashboard API (authenticated)
+	// Dashboard API (authenticated, no shared rate limit with public)
 	r.Route("/api/dashboard", func(r chi.Router) {
 		r.Use(authmw.AuthRequired)
 
