@@ -7,22 +7,6 @@ on:
     branches: [main]
 
 jobs:
-  backend:
-    name: Go Backend
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.25'
-          cache-dependency-path: backend/go.sum
-      - name: Build
-        run: cd backend && go build ./...
-      - name: Test
-        run: cd backend && go test ./...
-      - name: Vet
-        run: cd backend && go vet ./...
-
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
@@ -35,5 +19,27 @@ jobs:
         run: cd frontend && bun install --frozen-lockfile
       - name: Build
         run: cd frontend && bun run build
+
+  backend:
+    name: Go Backend
+    needs: frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: backend/go.sum
+      - name: Build Frontend
+        run: cd frontend && bun install --frozen-lockfile && bun run build
+      - name: Copy dist
+        run: cp -r frontend/dist backend/cmd/server/dist
+      - name: Build
+        run: cd backend && go build ./...
       - name: Test
-        run: cd frontend && bun run test
+        run: cd backend && go test ./...
+      - name: Vet
+        run: cd backend && go vet ./...

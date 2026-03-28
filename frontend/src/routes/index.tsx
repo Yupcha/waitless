@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { Zap, Shield, Globe, BarChart3, Code2, Mail, ArrowRight, Star, Terminal, Lock } from 'lucide-react'
+import { Zap, Shield, Globe, BarChart3, Code2, Mail, ArrowRight, Star, Terminal } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   component: LandingPage,
@@ -39,6 +39,9 @@ function LandingPage() {
             className="btn-secondary" style={{ padding: '7px 14px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
             <GithubIcon /> GitHub
           </a>
+          <Link to="/docs" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: 14, padding: '7px 14px' }}>
+            Docs
+          </Link>
           <Link to="/login" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: 14, padding: '7px 14px' }}>
             Login
           </Link>

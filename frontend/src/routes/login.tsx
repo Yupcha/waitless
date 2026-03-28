@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Zap, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { authApi } from '../lib/api'
@@ -10,6 +11,16 @@ export const Route = createFileRoute('/login')({
 
 function LoginPage() {
   const navigate = useNavigate()
+
+  const { data: user } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => authApi.me().then(r => r.data),
+    retry: false,
+  })
+
+  useEffect(() => {
+    if (user) navigate({ to: '/dashboard' })
+  }, [user])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
