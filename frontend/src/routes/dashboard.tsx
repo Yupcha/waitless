@@ -1,7 +1,7 @@
-import { createFileRoute, Outlet, Link, useNavigate, useMatches } from '@tanstack/react-router'
+import { createFileRoute, Outlet, Link, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { authApi } from '@/lib/api'
-import { Zap, FolderOpen, Settings, LogOut, Users, BarChart3, Shield, Menu, X, ChevronRight } from 'lucide-react'
+import { Zap, FolderOpen, Settings, LogOut, Users, BarChart3, Shield, Menu, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 
@@ -115,14 +115,10 @@ function DashboardLayout() {
         }}>
           {/* Logo */}
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 36, textDecoration: 'none', padding: '0 14px' }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              boxShadow: '0 4px 12px rgba(99,102,241,0.3)',
-            }}>
-              <Zap size={18} color="white" />
-            </div>
+            <img src="/logo.png" style={{
+              width: 36, height: 36, borderRadius: 10, objectFit: 'cover',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.5)', flexShrink: 0
+            }} alt="Waitless" />
             <span style={{ fontWeight: 800, fontSize: 18, color: '#e2e8f0', letterSpacing: '-0.02em' }}>Waitless</span>
           </Link>
 

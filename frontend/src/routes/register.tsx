@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Zap } from 'lucide-react'
+
 import toast from 'react-hot-toast'
 import { authApi } from '../lib/api'
 
@@ -56,15 +56,13 @@ function RegisterPage() {
       {/* Art panel */}
       <div className="auth-art">
         <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: 40 }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: 16, margin: '0 auto 24px',
-            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 8px 32px rgba(99,102,241,0.4)',
-          }}>
-            <Zap size={32} color="white" />
-          </div>
-          <h2 style={{ fontSize: 28, fontWeight: 800, color: '#e2e8f0', margin: '0 0 8px' }}>Waitless</h2>
+          <img src="/logo.png" 
+            style={{ 
+              width: 128, height: 128, borderRadius: 24, margin: '0 auto 24px', display: 'block',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+            }} 
+            alt="Waitless Logo" 
+          />
           <p style={{ color: '#64748b', fontSize: 15, margin: 0, maxWidth: 280 }}>
             Launch your waitlist in minutes. No vendor lock-in.
           </p>

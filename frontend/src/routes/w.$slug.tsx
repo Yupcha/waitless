@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { publicApi } from '@/lib/api'
 import { useState } from 'react'
-import { Hourglass, CheckCircle, Mail, User, Zap, Gift, Copy, Check, Tag } from 'lucide-react'
+import { Hourglass, CheckCircle, Mail, User, Gift, Copy, Check, Tag } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getDaysLeft } from '@/lib/utils'
 
@@ -335,8 +335,9 @@ function WaitlistPage() {
 
             {/* Powered by */}
             <div style={{ textAlign: 'center', marginTop: 16 }}>
-              <a href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#334155', textDecoration: 'none' }}>
-                <Zap size={11} /> Powered by Waitless
+              <a href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#475569', textDecoration: 'none', fontWeight: 500 }}>
+                <img src="/logo.png" style={{ height: 14, width: 14, borderRadius: 3, objectFit: 'cover' }} alt="" /> 
+                Powered by Waitless
               </a>
             </div>
           </div>

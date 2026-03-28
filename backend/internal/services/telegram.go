@@ -36,7 +36,6 @@ func SendTelegramNotification(botToken, chatID, message string) error {
 	return nil
 }
 
-// NotifyNewSubscriber sends a Telegram notification for a new subscriber sign-up
 func NotifyNewSubscriber(projectID string, projectName string, email string, name string, promoCode string) {
 	var cfg models.TelegramConfig
 	if err := database.DB.Where("project_id = ? AND enabled = true AND notify_signup = true", projectID).
@@ -44,8 +43,12 @@ func NotifyNewSubscriber(projectID string, projectName string, email string, nam
 		return
 	}
 
-	// Check campaign filter
-	if cfg.CampaignFilter != "" && promoCode != "" {
+	// Check campaign filter:
+	// If the user specified a CampaignFilter, we ONLY notify if the promoCode matches one in the filter
+	if cfg.CampaignFilter != "" {
+		if promoCode == "" {
+			return // Filter is set, but this is an organic signup (no promo code)
+		}
 		filters := strings.Split(cfg.CampaignFilter, ",")
 		matched := false
 		for _, f := range filters {
@@ -68,7 +71,9 @@ func NotifyNewSubscriber(projectID string, projectName string, email string, nam
 		msg += fmt.Sprintf("\n🏷 Promo: <code>%s</code>", promoCode)
 	}
 
-	SendTelegramNotification(cfg.BotToken, cfg.ChatID, msg)
+	if err := SendTelegramNotification(cfg.BotToken, cfg.ChatID, msg); err != nil {
+		fmt.Printf("[Telegram] Failed to send new subscriber notification: %v\n", err)
+	}
 }
 
 // NotifyCouponRedeemed sends a Telegram notification when a coupon is redeemed

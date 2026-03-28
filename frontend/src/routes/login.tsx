@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Zap, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { authApi } from '../lib/api'
 
@@ -61,15 +61,13 @@ function LoginPage() {
       {/* Art panel */}
       <div className="auth-art">
         <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: 40 }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: 16, margin: '0 auto 24px',
-            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 8px 32px rgba(99,102,241,0.4)',
-          }}>
-            <Zap size={32} color="white" />
-          </div>
-          <h2 style={{ fontSize: 28, fontWeight: 800, color: '#e2e8f0', margin: '0 0 8px' }}>Waitless</h2>
+          <img src="/logo.png" 
+            style={{ 
+              width: 128, height: 128, borderRadius: 24, margin: '0 auto 24px', display: 'block',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+            }} 
+            alt="Waitless Logo" 
+          />
           <p style={{ color: '#64748b', fontSize: 15, margin: 0, maxWidth: 280 }}>
             Self-hosted waitlist platform with your own SMTP
           </p>
@@ -82,13 +80,11 @@ function LoginPage() {
           <div style={{ marginBottom: 36 }}>
             {/* Mobile logo */}
             <div className="auth-art" style={{
-              display: 'none', width: 44, height: 44, borderRadius: 12,
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              alignItems: 'center', justifyContent: 'center', marginBottom: 20,
-              boxShadow: '0 4px 16px rgba(99,102,241,0.3)', flex: 'none',
+              display: 'none', width: 44, height: 44, borderRadius: 12, overflow: 'hidden',
+              marginBottom: 20, boxShadow: '0 4px 16px rgba(0,0,0,0.5)', flex: 'none',
               minHeight: 'auto', border: 'none',
             }}>
-              <Zap size={22} color="white" />
+              <img src="/logo.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Waitless" />
             </div>
             <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, color: '#e2e8f0', letterSpacing: '-0.02em' }}>
               {showForgot ? 'Reset password' : 'Welcome back'}

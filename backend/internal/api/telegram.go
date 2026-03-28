@@ -64,9 +64,15 @@ func SaveTelegramConfig(w http.ResponseWriter, r *http.Request) {
 	cfg.CampaignFilter = input.CampaignFilter
 
 	if cfg.ID == "" {
-		database.DB.Create(&cfg)
+		if err := database.DB.Create(&cfg).Error; err != nil {
+			jsonError(w, "failed to save configuration", http.StatusInternalServerError)
+			return
+		}
 	} else {
-		database.DB.Save(&cfg)
+		if err := database.DB.Save(&cfg).Error; err != nil {
+			jsonError(w, "failed to update configuration", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	jsonResponse(w, cfg, http.StatusOK)

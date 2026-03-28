@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { Zap, Shield, Globe, BarChart3, Code2, Mail, ArrowRight, Star, Terminal } from 'lucide-react'
+import { Shield, Globe, BarChart3, Code2, Mail, ArrowRight, Star, Terminal } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   component: LandingPage,
@@ -24,14 +24,10 @@ function LandingPage() {
         borderBottom: '1px solid rgba(255,255,255,0.05)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: 8,
-            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(99,102,241,0.3)',
-          }}>
-            <Zap size={17} color="white" />
-          </div>
+          <img src="/logo.png" style={{
+            width: 32, height: 32, borderRadius: 8, objectFit: 'cover',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.4)', flexShrink: 0
+          }} alt="Waitless" />
           <span style={{ fontWeight: 800, fontSize: 18, color: '#e2e8f0', letterSpacing: '-0.02em' }}>Waitless</span>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

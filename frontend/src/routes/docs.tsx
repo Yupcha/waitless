@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
-import { Zap, Book, Terminal, Code2, Key, Globe, Copy, Check, Menu, X } from 'lucide-react'
+import { Book, Terminal, Code2, Key, Globe, Copy, Check, Menu, X } from 'lucide-react'
 
 export const Route = createFileRoute('/docs')({
   component: DocsPage,
@@ -95,12 +95,10 @@ function DocsPage() {
         borderBottom: '1px solid rgba(255,255,255,0.05)',
       }}>
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: 8,
-            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(99,102,241,0.3)',
-          }}><Zap size={17} color="white" /></div>
+          <img src="/logo.png" style={{
+            width: 32, height: 32, borderRadius: 8, objectFit: 'cover',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.4)', flexShrink: 0
+          }} alt="Waitless" />
           <span style={{ fontWeight: 800, fontSize: 18, color: '#e2e8f0', letterSpacing: '-0.02em' }}>Waitless</span>
           <span style={{ fontSize: 13, color: '#475569', marginLeft: 4 }}>Docs</span>
         </Link>
