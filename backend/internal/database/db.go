@@ -47,6 +47,8 @@ func Migrate() error {
 		&models.EmailLog{},
 		&models.AnalyticsRecord{},
 		&models.Webhook{},
+		&models.PromoCampaign{},
+		&models.CouponCode{},
 	)
 	if err != nil {
 		return fmt.Errorf("migration failed: %w", err)

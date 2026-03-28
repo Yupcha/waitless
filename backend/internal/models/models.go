@@ -261,3 +261,80 @@ func (wh *Webhook) BeforeCreate(tx *gorm.DB) error {
 	}
 	return nil
 }
+
+// CouponStatus tracks the lifecycle of a coupon code
+type CouponStatus string
+
+const (
+	CouponActive  CouponStatus = "active"
+	CouponUsed    CouponStatus = "used"
+	CouponRevoked CouponStatus = "revoked"
+	CouponExpired CouponStatus = "expired"
+)
+
+type DiscountType string
+
+const (
+	DiscountFlat    DiscountType = "flat"
+	DiscountPercent DiscountType = "percent"
+)
+
+// PromoCampaign is a per-project promo configuration
+type PromoCampaign struct {
+	ID            string       `json:"id" gorm:"type:varchar(12);primaryKey"`
+	ProjectID     string       `json:"project_id" gorm:"type:varchar(12);uniqueIndex;not null"`
+	Enabled       bool         `json:"enabled" gorm:"default:false"`
+	DiscountType  DiscountType `json:"discount_type" gorm:"default:'flat'"`
+	DiscountValue float64      `json:"discount_value" gorm:"default:0"`
+	Currency      string       `json:"currency" gorm:"default:'USD'"`
+	CodePrefix    string       `json:"code_prefix"`
+	CodeLength    int          `json:"code_length" gorm:"default:8"`
+	MaxCodes      int          `json:"max_codes" gorm:"default:0"` // 0 = unlimited
+	ValidDays     int          `json:"valid_days" gorm:"default:0"` // 0 = never expires
+	Description   string       `json:"description"`
+	CreatedAt     time.Time    `json:"created_at"`
+	UpdatedAt     time.Time    `json:"updated_at"`
+}
+
+func (p *PromoCampaign) BeforeCreate(tx *gorm.DB) error {
+	if p.ID == "" {
+		p.ID = NewID()
+	}
+	return nil
+}
+
+// CouponCode is a unique code generated per subscriber
+type CouponCode struct {
+	ID            string       `json:"id" gorm:"type:varchar(12);primaryKey"`
+	ProjectID     string       `json:"project_id" gorm:"type:varchar(12);not null;index"`
+	SubscriberID  string       `json:"subscriber_id" gorm:"type:varchar(12);not null;index"`
+	Code          string       `json:"code" gorm:"uniqueIndex;not null"`
+	Status        CouponStatus `json:"status" gorm:"default:'active'"`
+	DiscountType  DiscountType `json:"discount_type"`
+	DiscountValue float64      `json:"discount_value"`
+	Currency      string       `json:"currency"`
+	UsedAt        *time.Time   `json:"used_at"`
+	ExpiresAt     *time.Time   `json:"expires_at"`
+	CreatedAt     time.Time    `json:"created_at"`
+	UpdatedAt     time.Time    `json:"updated_at"`
+	Subscriber    Subscriber   `json:"subscriber,omitempty" gorm:"foreignKey:SubscriberID"`
+}
+
+func (c *CouponCode) BeforeCreate(tx *gorm.DB) error {
+	if c.ID == "" {
+		c.ID = NewID()
+	}
+	return nil
+}
+
+// GenerateCouponCode creates a random coupon code with optional prefix
+func GenerateCouponCode(prefix string, length int) string {
+	if length < 6 {
+		length = 8
+	}
+	code := generate(length)
+	if prefix != "" {
+		return prefix + "-" + code
+	}
+	return code
+}

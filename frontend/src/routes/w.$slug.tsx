@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { publicApi } from '@/lib/api'
 import { useState } from 'react'
-import { Hourglass, CheckCircle, Mail, User, Zap } from 'lucide-react'
+import { Hourglass, CheckCircle, Mail, User, Zap, Gift, Copy, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getDaysLeft } from '@/lib/utils'
 
@@ -14,6 +14,8 @@ function WaitlistPage() {
   const { slug } = Route.useParams()
   const [submitted, setSubmitted] = useState(false)
   const [form, setForm] = useState({ name: '', email: '' })
+  const [coupon, setCoupon] = useState<any>(null)
+  const [codeCopied, setCodeCopied] = useState(false)
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['public-project', slug],
@@ -23,7 +25,10 @@ function WaitlistPage() {
 
   const signupMutation = useMutation({
     mutationFn: () => publicApi.subscribe(slug, form),
-    onSuccess: () => setSubmitted(true),
+    onSuccess: (res: any) => {
+      setSubmitted(true)
+      if (res.data?.coupon) setCoupon(res.data.coupon)
+    },
     onError: (err: any) => {
       const msg = err.response?.data?.error
       if (msg === 'already subscribed') toast.error("You're already on the list!")
@@ -160,6 +165,42 @@ function WaitlistPage() {
                   <p style={{ margin: 0, color: '#64748b', fontSize: 15 }}>
                     We'll email you when {project.name} launches. Keep an eye on your inbox!
                   </p>
+                  {coupon && (
+                    <div style={{
+                      marginTop: 20, padding: '16px 20px', borderRadius: 12,
+                      background: `rgba(${hexToRgb(themeColor)},0.08)`,
+                      border: `1px solid rgba(${hexToRgb(themeColor)},0.2)`,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                        <Gift size={14} color={themeColor} />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: themeColor }}>Your exclusive code</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <code style={{
+                          flex: 1, fontSize: 18, fontWeight: 700, letterSpacing: '0.05em',
+                          color: '#e2e8f0', background: 'rgba(0,0,0,0.3)', padding: '10px 14px',
+                          borderRadius: 8, textAlign: 'center',
+                        }}>{coupon.code}</code>
+                        <button onClick={() => {
+                          navigator.clipboard.writeText(coupon.code)
+                          setCodeCopied(true)
+                          setTimeout(() => setCodeCopied(false), 2000)
+                        }} style={{
+                          background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: 8, padding: '10px', cursor: 'pointer', color: '#94a3b8',
+                        }}>
+                          {codeCopied ? <Check size={16} color="#4ade80" /> : <Copy size={16} />}
+                        </button>
+                      </div>
+                      <p style={{ margin: '8px 0 0', fontSize: 12, color: '#475569' }}>
+                        {coupon.discount_type === 'percent'
+                          ? `${coupon.discount_value}% off`
+                          : `${coupon.currency} ${coupon.discount_value} off`
+                        }
+                        {coupon.expires_at && ` · Expires ${new Date(coupon.expires_at).toLocaleDateString()}`}
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <>

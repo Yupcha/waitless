@@ -79,6 +79,51 @@ GET /api/v1/projects/{projectId}/count
 
 ---
 
+## Validate Coupon Code
+
+```
+GET /api/v1/projects/{projectId}/coupons/validate?code=EARLY-xK9mP2qr
+```
+
+**Response `200`:**
+```json
+{
+  "valid": true,
+  "code": "EARLY-xK9mP2qr",
+  "status": "active",
+  "discount_type": "flat",
+  "discount_value": 5.00,
+  "currency": "USD",
+  "expires_at": "2026-04-28T00:00:00Z",
+  "subscriber": {
+    "id": "AbPjb8GbmjcJ",
+    "email": "user@example.com",
+    "name": "Jane"
+  }
+}
+```
+
+---
+
+## Update Coupon Status
+
+```
+PATCH /api/v1/projects/{projectId}/coupons/{code}/status
+Content-Type: application/json
+```
+
+```json
+{
+  "status": "used"
+}
+```
+
+Valid statuses: `active`, `used`, `revoked`, `expired`
+
+When status is set to `used`, fires `coupon.redeemed` webhook.
+
+---
+
 ## Errors
 
 All errors return:

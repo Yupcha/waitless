@@ -122,6 +122,12 @@ func NewRouter(version string, startTime time.Time) http.Handler {
 
 		// Widget
 		r.Get("/projects/{id}/widget", GetWidgetCode)
+
+		// Coupons / Promo
+		r.Get("/projects/{id}/promo", GetPromoCampaign)
+		r.Put("/projects/{id}/promo", SavePromoCampaign)
+		r.Get("/projects/{id}/coupons", ListCouponCodes)
+		r.Patch("/projects/{id}/coupons/{cid}/revoke", RevokeCouponCode)
 	})
 
 	// Admin API
@@ -141,6 +147,8 @@ func NewRouter(version string, startTime time.Time) http.Handler {
 		r.Get("/projects/{projectId}/subscribers", APIListSubscribers)
 		r.Post("/projects/{projectId}/subscribers", APIAddSubscriber)
 		r.Get("/projects/{projectId}/count", APISubscriberCount)
+		r.Get("/projects/{projectId}/coupons/validate", APIValidateCoupon)
+		r.Patch("/projects/{projectId}/coupons/{code}/status", APIUpdateCouponStatus)
 	})
 
 	return r

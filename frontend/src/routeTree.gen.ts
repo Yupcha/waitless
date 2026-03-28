@@ -33,6 +33,7 @@ import { Route as DashboardProjectsIdSubscribersRouteImport } from './routes/das
 import { Route as DashboardProjectsIdSmtpRouteImport } from './routes/dashboard.projects.$id.smtp'
 import { Route as DashboardProjectsIdSettingsRouteImport } from './routes/dashboard.projects.$id.settings'
 import { Route as DashboardProjectsIdEmailsRouteImport } from './routes/dashboard.projects.$id.emails'
+import { Route as DashboardProjectsIdCouponsRouteImport } from './routes/dashboard.projects.$id.coupons'
 import { Route as DashboardProjectsIdApiKeysRouteImport } from './routes/dashboard.projects.$id.api-keys'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -161,6 +162,12 @@ const DashboardProjectsIdEmailsRoute =
     path: '/emails',
     getParentRoute: () => DashboardProjectsIdRoute,
   } as any)
+const DashboardProjectsIdCouponsRoute =
+  DashboardProjectsIdCouponsRouteImport.update({
+    id: '/coupons',
+    path: '/coupons',
+    getParentRoute: () => DashboardProjectsIdRoute,
+  } as any)
 const DashboardProjectsIdApiKeysRoute =
   DashboardProjectsIdApiKeysRouteImport.update({
     id: '/api-keys',
@@ -187,6 +194,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/projects/new': typeof DashboardProjectsNewRoute
   '/dashboard/admin/': typeof DashboardAdminIndexRoute
   '/dashboard/projects/$id/api-keys': typeof DashboardProjectsIdApiKeysRoute
+  '/dashboard/projects/$id/coupons': typeof DashboardProjectsIdCouponsRoute
   '/dashboard/projects/$id/emails': typeof DashboardProjectsIdEmailsRoute
   '/dashboard/projects/$id/settings': typeof DashboardProjectsIdSettingsRoute
   '/dashboard/projects/$id/smtp': typeof DashboardProjectsIdSmtpRoute
@@ -211,6 +219,7 @@ export interface FileRoutesByTo {
   '/dashboard/projects/new': typeof DashboardProjectsNewRoute
   '/dashboard/admin': typeof DashboardAdminIndexRoute
   '/dashboard/projects/$id/api-keys': typeof DashboardProjectsIdApiKeysRoute
+  '/dashboard/projects/$id/coupons': typeof DashboardProjectsIdCouponsRoute
   '/dashboard/projects/$id/emails': typeof DashboardProjectsIdEmailsRoute
   '/dashboard/projects/$id/settings': typeof DashboardProjectsIdSettingsRoute
   '/dashboard/projects/$id/smtp': typeof DashboardProjectsIdSmtpRoute
@@ -239,6 +248,7 @@ export interface FileRoutesById {
   '/dashboard/projects/new': typeof DashboardProjectsNewRoute
   '/dashboard/admin/': typeof DashboardAdminIndexRoute
   '/dashboard/projects/$id/api-keys': typeof DashboardProjectsIdApiKeysRoute
+  '/dashboard/projects/$id/coupons': typeof DashboardProjectsIdCouponsRoute
   '/dashboard/projects/$id/emails': typeof DashboardProjectsIdEmailsRoute
   '/dashboard/projects/$id/settings': typeof DashboardProjectsIdSettingsRoute
   '/dashboard/projects/$id/smtp': typeof DashboardProjectsIdSmtpRoute
@@ -268,6 +278,7 @@ export interface FileRouteTypes {
     | '/dashboard/projects/new'
     | '/dashboard/admin/'
     | '/dashboard/projects/$id/api-keys'
+    | '/dashboard/projects/$id/coupons'
     | '/dashboard/projects/$id/emails'
     | '/dashboard/projects/$id/settings'
     | '/dashboard/projects/$id/smtp'
@@ -292,6 +303,7 @@ export interface FileRouteTypes {
     | '/dashboard/projects/new'
     | '/dashboard/admin'
     | '/dashboard/projects/$id/api-keys'
+    | '/dashboard/projects/$id/coupons'
     | '/dashboard/projects/$id/emails'
     | '/dashboard/projects/$id/settings'
     | '/dashboard/projects/$id/smtp'
@@ -319,6 +331,7 @@ export interface FileRouteTypes {
     | '/dashboard/projects/new'
     | '/dashboard/admin/'
     | '/dashboard/projects/$id/api-keys'
+    | '/dashboard/projects/$id/coupons'
     | '/dashboard/projects/$id/emails'
     | '/dashboard/projects/$id/settings'
     | '/dashboard/projects/$id/smtp'
@@ -510,6 +523,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardProjectsIdEmailsRouteImport
       parentRoute: typeof DashboardProjectsIdRoute
     }
+    '/dashboard/projects/$id/coupons': {
+      id: '/dashboard/projects/$id/coupons'
+      path: '/coupons'
+      fullPath: '/dashboard/projects/$id/coupons'
+      preLoaderRoute: typeof DashboardProjectsIdCouponsRouteImport
+      parentRoute: typeof DashboardProjectsIdRoute
+    }
     '/dashboard/projects/$id/api-keys': {
       id: '/dashboard/projects/$id/api-keys'
       path: '/api-keys'
@@ -538,6 +558,7 @@ const DashboardAdminRouteWithChildren = DashboardAdminRoute._addFileChildren(
 
 interface DashboardProjectsIdRouteChildren {
   DashboardProjectsIdApiKeysRoute: typeof DashboardProjectsIdApiKeysRoute
+  DashboardProjectsIdCouponsRoute: typeof DashboardProjectsIdCouponsRoute
   DashboardProjectsIdEmailsRoute: typeof DashboardProjectsIdEmailsRoute
   DashboardProjectsIdSettingsRoute: typeof DashboardProjectsIdSettingsRoute
   DashboardProjectsIdSmtpRoute: typeof DashboardProjectsIdSmtpRoute
@@ -549,6 +570,7 @@ interface DashboardProjectsIdRouteChildren {
 
 const DashboardProjectsIdRouteChildren: DashboardProjectsIdRouteChildren = {
   DashboardProjectsIdApiKeysRoute: DashboardProjectsIdApiKeysRoute,
+  DashboardProjectsIdCouponsRoute: DashboardProjectsIdCouponsRoute,
   DashboardProjectsIdEmailsRoute: DashboardProjectsIdEmailsRoute,
   DashboardProjectsIdSettingsRoute: DashboardProjectsIdSettingsRoute,
   DashboardProjectsIdSmtpRoute: DashboardProjectsIdSmtpRoute,

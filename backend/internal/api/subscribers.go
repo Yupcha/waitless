@@ -129,10 +129,24 @@ func PublicSignup(w http.ResponseWriter, r *http.Request) {
 	// Fire webhooks async
 	go fireWebhooks(project.ID, "subscriber.created", subscriber)
 
-	jsonResponse(w, map[string]interface{}{
+	// Generate coupon code if promo campaign is enabled
+	coupon := GenerateCouponForSubscriber(project.ID, subscriber.ID)
+
+	resp := map[string]interface{}{
 		"message":    "subscribed",
 		"subscriber": subscriber,
-	}, http.StatusCreated)
+	}
+	if coupon != nil {
+		resp["coupon"] = map[string]interface{}{
+			"code":           coupon.Code,
+			"discount_type":  coupon.DiscountType,
+			"discount_value": coupon.DiscountValue,
+			"currency":       coupon.Currency,
+			"expires_at":     coupon.ExpiresAt,
+		}
+	}
+
+	jsonResponse(w, resp, http.StatusCreated)
 }
 
 func HandleUnsubscribe(w http.ResponseWriter, r *http.Request) {

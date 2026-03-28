@@ -245,6 +245,25 @@ Content-Type: application/json
           <CodeBlock>{`GET /api/v1/projects/{projectId}/count`}</CodeBlock>
           <CodeBlock>{`{ "count": 142 }`}</CodeBlock>
 
+          <H3>Validate Coupon Code</H3>
+          <CodeBlock>{`GET /api/v1/projects/{projectId}/coupons/validate?code=EARLY-xK9mP2qr`}</CodeBlock>
+          <P>Returns discount info, validity, and subscriber details for the given coupon code.</P>
+          <CodeBlock>{`{
+  "valid": true,
+  "code": "EARLY-xK9mP2qr",
+  "status": "active",
+  "discount_type": "flat",
+  "discount_value": 5.00,
+  "currency": "USD",
+  "subscriber": { "id": "...", "email": "user@example.com" }
+}`}</CodeBlock>
+
+          <H3>Update Coupon Status</H3>
+          <CodeBlock>{`PATCH /api/v1/projects/{projectId}/coupons/{code}/status
+
+{ "status": "used" }`}</CodeBlock>
+          <P>Valid statuses: <code style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 4, fontSize: 13 }}>active</code>, <code style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 4, fontSize: 13 }}>used</code>, <code style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 4, fontSize: 13 }}>revoked</code>, <code style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 4, fontSize: 13 }}>expired</code>. Fires <code style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 4, fontSize: 13 }}>coupon.redeemed</code> webhook when set to used.</P>
+
           <H3>Errors</H3>
           <Table
             headers={['Code', 'Meaning']}
