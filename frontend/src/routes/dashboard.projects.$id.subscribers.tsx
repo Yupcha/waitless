@@ -124,7 +124,10 @@ function SubscribersPage() {
                 <th>Name</th>
                 <th>Email</th>
                 <th>Status</th>
+                <th>Promo</th>
+                <th>Coupon</th>
                 <th>Source</th>
+                <th>IP</th>
                 <th>Country</th>
                 <th>Signed Up</th>
                 <th style={{ width: 60 }}></th>
@@ -132,9 +135,9 @@ function SubscribersPage() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>Loading...</td></tr>
+                <tr><td colSpan={11} style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>Loading...</td></tr>
               ) : subscribers.length === 0 ? (
-                <tr><td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>No subscribers found</td></tr>
+                <tr><td colSpan={11} style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>No subscribers found</td></tr>
               ) : subscribers.map((s: any) => (
                 <React.Fragment key={s.id}>
                 <tr>
@@ -154,8 +157,30 @@ function SubscribersPage() {
                       {s.status}
                     </span>
                   </td>
+                  <td style={{ fontSize: 13 }}>
+                    {s.promo_used ? (
+                      <span style={{
+                        padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                        background: 'rgba(250,204,21,0.1)', color: '#facc15', border: '1px solid rgba(250,204,21,0.2)',
+                      }}>{s.promo_used}</span>
+                    ) : <span style={{ color: '#334155' }}>—</span>}
+                  </td>
+                  <td style={{ fontSize: 13 }}>
+                    {s.coupon_code ? (
+                      <div>
+                        <code style={{ fontSize: 11, color: '#94a3b8' }}>{s.coupon_code}</code>
+                        <span className={`badge ${s.coupon_status === 'used' ? 'badge-green' : s.coupon_status === 'revoked' ? 'badge-red' : 'badge-gray'}`}
+                          style={{ marginLeft: 4, fontSize: 10 }}>
+                          {s.coupon_status}
+                        </span>
+                      </div>
+                    ) : <span style={{ color: '#334155' }}>—</span>}
+                  </td>
                   <td>
                     <span className="badge badge-purple">{s.source}</span>
+                  </td>
+                  <td style={{ fontSize: 12, color: '#475569', fontFamily: 'monospace' }}>
+                    {s.ip_address || '—'}
                   </td>
                   <td style={{ fontSize: 13 }}>
                     {s.country ? (
@@ -179,7 +204,7 @@ function SubscribersPage() {
                     if (entries.length === 0) return null
                     return (
                       <tr>
-                        <td colSpan={8} style={{ padding: '8px 16px 12px 48px', background: 'rgba(99,102,241,0.03)' }}>
+                        <td colSpan={11} style={{ padding: '8px 16px 12px 48px', background: 'rgba(99,102,241,0.03)' }}>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px' }}>
                             {entries.map(([k, v]) => (
                               <div key={k} style={{ fontSize: 12 }}>

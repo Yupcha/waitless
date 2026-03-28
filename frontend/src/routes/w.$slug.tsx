@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { publicApi } from '@/lib/api'
 import { useState } from 'react'
-import { Hourglass, CheckCircle, Mail, User, Zap, Gift, Copy, Check } from 'lucide-react'
+import { Hourglass, CheckCircle, Mail, User, Zap, Gift, Copy, Check, Tag } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getDaysLeft } from '@/lib/utils'
 
@@ -16,6 +16,11 @@ function WaitlistPage() {
   const [form, setForm] = useState<Record<string, any>>({ name: '', email: '' })
   const [coupon, setCoupon] = useState<any>(null)
   const [codeCopied, setCodeCopied] = useState(false)
+  const [showPromo, setShowPromo] = useState(false)
+
+  // Read promo code from URL: /w/my-project?promo=get5
+  const urlPromo = new URLSearchParams(window.location.search).get('promo') || ''
+  const [promo, setPromo] = useState(urlPromo)
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['public-project', slug],
@@ -38,6 +43,7 @@ function WaitlistPage() {
       })
       return publicApi.subscribe(slug, {
         name: form.name, email: form.email,
+        ...(promo ? { promo } : {}),
         ...(Object.keys(customData).length > 0 ? { custom_data: customData } : {}),
       })
     },
@@ -247,6 +253,35 @@ function WaitlistPage() {
                     </div>
 
                     {/* Custom fields */}
+
+                    {/* Promo code */}
+                    {urlPromo ? (
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
+                        background: `rgba(${hexToRgb(themeColor)},0.06)`, borderRadius: 8,
+                        border: `1px solid rgba(${hexToRgb(themeColor)},0.15)`,
+                      }}>
+                        <Tag size={13} color={themeColor} />
+                        <span style={{ fontSize: 13, color: '#94a3b8' }}>Promo: <strong style={{ color: themeColor }}>{urlPromo}</strong></span>
+                      </div>
+                    ) : (
+                      <div>
+                        {!showPromo ? (
+                          <button type="button" onClick={() => setShowPromo(true)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#475569', padding: 0 }}>
+                            Have a promo code?
+                          </button>
+                        ) : (
+                          <div style={{ position: 'relative' }}>
+                            <Tag size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#475569' }} />
+                            <input className="input" placeholder="Enter promo code"
+                              value={promo} onChange={e => setPromo(e.target.value.toLowerCase())}
+                              style={{ paddingLeft: 34 }} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {customFields.map((cf: any) => (
                       <div key={cf.key}>
                         {cf.type === 'text' && (

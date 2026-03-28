@@ -183,7 +183,7 @@ Content-Type: application/json`}</CodeBlock>
               ['<code>name</code>', 'string', '✅', 'Subscriber name'],
               ['<code>source</code>', 'string', '—', '<code>form</code>, <code>api</code>, or <code>widget</code>'],
               ['<code>promo</code>', 'string', '—', 'Promo campaign trigger code (e.g. <code>get5</code>)'],
-              ['<code>custom_data</code>', 'object', '—', 'Custom field responses as key-value pairs'],
+              ['<code>custom_data</code>', 'object', '—', 'Responses to custom fields. Keys match the field <code>key</code> defined in project settings (e.g. <code>{"city":"NYC","plan":"Pro"}</code>)'],
             ]}
           />
           <CodeBlock>{`// Response 201

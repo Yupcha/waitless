@@ -15,6 +15,7 @@ Content-Type: application/json
 | `name` | string | ✅ | Subscriber name |
 | `source` | string | — | `"form"` (default), `"api"`, or `"widget"` |
 | `promo` | string | — | Promo campaign code (e.g., `get5`) |
+| `custom_data` | object | — | Custom field responses. Keys match field `key` from project settings (e.g., `{"city":"NYC","plan":"Pro"}`) |
 
 **Response `201`:**
 ```json

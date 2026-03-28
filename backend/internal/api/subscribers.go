@@ -281,8 +281,39 @@ func ListSubscribers(w http.ResponseWriter, r *http.Request) {
 	var subscribers []models.Subscriber
 	q.Offset(offset).Limit(limit).Find(&subscribers)
 
+	// Enrich with coupon info
+	subIDs := make([]string, len(subscribers))
+	for i, s := range subscribers {
+		subIDs[i] = s.ID
+	}
+	var coupons []models.CouponCode
+	if len(subIDs) > 0 {
+		database.DB.Where("subscriber_id IN ?", subIDs).Find(&coupons)
+	}
+	couponMap := map[string]models.CouponCode{}
+	for _, c := range coupons {
+		couponMap[c.SubscriberID] = c
+	}
+
+	type enrichedSub struct {
+		models.Subscriber
+		CouponCode   string `json:"coupon_code,omitempty"`
+		CouponStatus string `json:"coupon_status,omitempty"`
+		PromoUsed    string `json:"promo_used,omitempty"`
+	}
+
+	enriched := make([]enrichedSub, len(subscribers))
+	for i, s := range subscribers {
+		enriched[i] = enrichedSub{Subscriber: s}
+		if c, ok := couponMap[s.ID]; ok {
+			enriched[i].CouponCode = c.Code
+			enriched[i].CouponStatus = string(c.Status)
+			enriched[i].PromoUsed = c.SourceCode
+		}
+	}
+
 	jsonResponse(w, map[string]interface{}{
-		"subscribers": subscribers,
+		"subscribers": enriched,
 		"total":       total,
 		"page":        page,
 		"limit":       limit,
