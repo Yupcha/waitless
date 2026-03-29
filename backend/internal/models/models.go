@@ -19,6 +19,7 @@ const (
 	StatusActive       SubscriberStatus = "active"
 	StatusUnsubscribed SubscriberStatus = "unsubscribed"
 	StatusPending      SubscriberStatus = "pending" // for double opt-in
+	StatusDeleted      SubscriberStatus = "deleted"
 )
 
 type Source string
@@ -33,8 +34,9 @@ const (
 type ProjectStatus string
 
 const (
-	ProjectActive ProjectStatus = "active"
-	ProjectPaused ProjectStatus = "paused"
+	ProjectActive          ProjectStatus = "active"
+	ProjectPaused          ProjectStatus = "paused"
+	ProjectPendingDeletion ProjectStatus = "pending_deletion"
 )
 
 type EmailLogStatus string
@@ -121,12 +123,13 @@ type Project struct {
 	// Custom form fields
 	CustomFields string `json:"custom_fields"` // JSON array of field definitions
 
-	CreatedAt   time.Time    `json:"created_at"`
-	UpdatedAt   time.Time    `json:"updated_at"`
-	DeletedAt   *time.Time   `json:"-" gorm:"index"`
-	User        User         `json:"user,omitempty" gorm:"foreignKey:UserID"`
-	SMTP        *ProjectSMTP `json:"smtp,omitempty" gorm:"foreignKey:ProjectID"`
-	Subscribers []Subscriber `json:"subscribers,omitempty" gorm:"foreignKey:ProjectID"`
+	CreatedAt           time.Time    `json:"created_at"`
+	UpdatedAt           time.Time    `json:"updated_at"`
+	DeletedAt           *time.Time   `json:"-" gorm:"index"`
+	ScheduledDeletionAt *time.Time   `json:"scheduled_deletion_at"`
+	User                User         `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	SMTP                *ProjectSMTP `json:"smtp,omitempty" gorm:"foreignKey:ProjectID"`
+	Subscribers         []Subscriber `json:"subscribers,omitempty" gorm:"foreignKey:ProjectID"`
 }
 
 func (p *Project) BeforeCreate(tx *gorm.DB) error {
@@ -140,16 +143,23 @@ func (p *Project) BeforeCreate(tx *gorm.DB) error {
 type ProjectSMTP struct {
 	ID        string    `json:"id" gorm:"type:varchar(12);primaryKey"`
 	ProjectID string    `json:"project_id" gorm:"type:varchar(12);uniqueIndex;not null"`
-	Host      string    `json:"host"`
-	Port      int       `json:"port" gorm:"default:587"`
-	Username  string    `json:"username"`
-	Password  string    `json:"-"` // AES-256-GCM encrypted at rest
-	FromEmail string    `json:"from_email"`
-	FromName  string    `json:"from_name"`
-	TLS       bool      `json:"tls" gorm:"default:true"`
-	Verified  bool      `json:"verified" gorm:"default:false"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	// Provider: "smtp" (default) | "gmail_oauth" | "zoho_smtp"
+	Provider         string     `json:"provider" gorm:"default:'smtp'"`
+	Host             string     `json:"host"`
+	Port             int        `json:"port" gorm:"default:587"`
+	Username         string     `json:"username"`
+	Password         string     `json:"-"` // AES-256-GCM encrypted at rest
+	FromEmail        string     `json:"from_email"`
+	FromName         string     `json:"from_name"`
+	TLS              bool       `json:"tls" gorm:"default:true"`
+	Verified         bool       `json:"verified" gorm:"default:false"`
+	// OAuth2 fields (Gmail OAuth)
+	OAuthAccessToken  string     `json:"-"` // encrypted access token
+	OAuthRefreshToken string     `json:"-"` // encrypted refresh token
+	OAuthTokenExpiry  *time.Time `json:"-"`
+	OAuthEmail        string     `json:"oauth_email"` // connected google email shown in UI
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
 func (s *ProjectSMTP) BeforeCreate(tx *gorm.DB) error {

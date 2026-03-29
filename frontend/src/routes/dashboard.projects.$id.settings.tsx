@@ -1,9 +1,9 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { projectsApi } from '@/lib/api'
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
-import { Trash2, AlertTriangle, Plus, ChevronUp, ChevronDown, X } from 'lucide-react'
+import { Trash2, AlertTriangle, Plus, ChevronUp, ChevronDown, X, RefreshCw, Lock } from 'lucide-react'
 
 export const Route = createFileRoute('/dashboard/projects/$id/settings')({
   component: ProjectSettings,
@@ -25,13 +25,15 @@ type CustomField = {
 
 function ProjectSettings() {
   const { id } = Route.useParams()
-  const navigate = useNavigate()
   const qc = useQueryClient()
 
   const { data: project } = useQuery({
     queryKey: ['project', id],
     queryFn: () => projectsApi.get(id).then(r => r.data),
   })
+
+  const [deleteModal, setDeleteModal] = useState(false)
+  const [deletePassword, setDeletePassword] = useState('')
 
   const [form, setForm] = useState({
     name: '', description: '', logo_url: '', launch_date: '',
@@ -111,11 +113,22 @@ function ProjectSettings() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: () => projectsApi.delete(id),
+    mutationFn: (password: string) => projectsApi.delete(id, password),
     onSuccess: () => {
-      toast.success('Project deleted')
-      navigate({ to: '/dashboard' })
+      toast.success('Project marked for deletion')
+      qc.invalidateQueries({ queryKey: ['project', id] })
+      setDeleteModal(false)
     },
+    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to delete'),
+  })
+
+  const recoverMutation = useMutation({
+    mutationFn: () => projectsApi.recover(id),
+    onSuccess: () => {
+      toast.success('Project recovered completely!')
+      qc.invalidateQueries({ queryKey: ['project', id] })
+    },
+    onError: () => toast.error('Failed to recover project'),
   })
 
   return (
@@ -276,20 +289,66 @@ function ProjectSettings() {
         </div>
       </div>
 
-      {/* Danger zone */}
-      <div style={{ padding: 24, border: '1px solid rgba(239,68,68,0.25)', borderRadius: 16, background: 'rgba(239,68,68,0.05)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <AlertTriangle size={16} color="#f87171" />
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#f87171' }}>Danger Zone</h3>
+      {/* Danger zone / Recovery zone */}
+      {project?.status === 'pending_deletion' ? (
+        <div style={{ padding: 24, border: '1px solid rgba(16,185,129,0.25)', borderRadius: 16, background: 'rgba(16,185,129,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <AlertTriangle size={16} color="#10b981" />
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#10b981' }}>Recovery Available</h3>
+          </div>
+          <p style={{ margin: '0 0 16px', fontSize: 14, color: '#64748b', lineHeight: 1.5 }}>
+            This project is scheduled for permanent deletion on {new Date(project.scheduled_deletion_at).toLocaleDateString()}.
+            You can restore it to full functionality immediately.
+          </p>
+          <button className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#10b981' }}
+            onClick={() => recoverMutation.mutate()} disabled={recoverMutation.isPending}>
+            <RefreshCw size={14} /> Restore Project
+          </button>
         </div>
-        <p style={{ margin: '0 0 16px', fontSize: 14, color: '#64748b' }}>
-          Permanently delete this project and all its subscribers. This cannot be undone.
-        </p>
-        <button className="btn-danger" style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-          onClick={() => { if (confirm('Delete this project and all subscribers? This cannot be undone.')) deleteMutation.mutate() }}>
-          <Trash2 size={14} /> Delete Project
-        </button>
-      </div>
+      ) : (
+        <div style={{ padding: 24, border: '1px solid rgba(239,68,68,0.25)', borderRadius: 16, background: 'rgba(239,68,68,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <AlertTriangle size={16} color="#f87171" />
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#f87171' }}>Danger Zone</h3>
+          </div>
+          <p style={{ margin: '0 0 16px', fontSize: 14, color: '#64748b' }}>
+            Schedule this project and all its subscribers for deletion. It will be held in recovery for 14 days before being permanently destroyed.
+          </p>
+          <button className="btn-danger" style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            onClick={() => { setDeleteModal(true); setDeletePassword(''); }}>
+            <Trash2 size={14} /> Delete Project
+          </button>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 999, backdropFilter: 'blur(3px)' }} onClick={() => setDeleteModal(false)} />
+          <div className="card" style={{
+            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            width: 400, zIndex: 1000, padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+          }}>
+            <h3 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 600, color: '#e2e8f0' }}>Confirm Deletion</h3>
+            <p style={{ margin: '0 0 24px', fontSize: 14, color: '#94a3b8', lineHeight: 1.5 }}>
+              Enter your account password to confirm project scheduling for deletion.
+            </p>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: '#94a3b8', marginBottom: 6 }}>
+                <Lock size={12} /> Password
+              </label>
+              <input type="password" placeholder="Account Password" style={{ width: '100%' }} className="input" 
+                value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button className="btn-secondary" onClick={() => setDeleteModal(false)} style={{ padding: '8px 16px' }}>Cancel</button>
+              <button className="btn-danger" onClick={() => deleteMutation.mutate(deletePassword)} disabled={!deletePassword || deleteMutation.isPending} style={{ padding: '8px 16px' }}>
+                Secure Delete
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

@@ -340,7 +340,14 @@ func DeleteSubscriber(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	database.DB.Where("id = ? AND project_id = ?", subID, projectID).Delete(&models.Subscriber{})
+	database.DB.Where("subscriber_id = ? AND project_id = ?", subID, projectID).Delete(&models.CouponCode{})
+	database.DB.Where("subscriber_id = ? AND project_id = ?", subID, projectID).Delete(&models.EmailLog{})
+	
+	if r.URL.Query().Get("permanent") == "true" {
+		database.DB.Where("id = ? AND project_id = ?", subID, projectID).Delete(&models.Subscriber{})
+	} else {
+		database.DB.Model(&models.Subscriber{}).Where("id = ? AND project_id = ?", subID, projectID).Update("status", models.StatusDeleted)
+	}
 	jsonResponse(w, map[string]string{"message": "deleted"}, http.StatusOK)
 }
 
@@ -528,6 +535,12 @@ func BulkAction(w http.ResponseWriter, r *http.Request) {
 
 	switch req.Action {
 	case "delete":
+		database.DB.Where("subscriber_id IN ? AND project_id = ?", req.IDs, projectID).Delete(&models.CouponCode{})
+		database.DB.Where("subscriber_id IN ? AND project_id = ?", req.IDs, projectID).Delete(&models.EmailLog{})
+		database.DB.Model(&models.Subscriber{}).Where("id IN ? AND project_id = ?", req.IDs, projectID).Update("status", models.StatusDeleted)
+	case "delete_permanent":
+		database.DB.Where("subscriber_id IN ? AND project_id = ?", req.IDs, projectID).Delete(&models.CouponCode{})
+		database.DB.Where("subscriber_id IN ? AND project_id = ?", req.IDs, projectID).Delete(&models.EmailLog{})
 		database.DB.Where("id IN ? AND project_id = ?", req.IDs, projectID).Delete(&models.Subscriber{})
 	case "unsubscribe":
 		database.DB.Model(&models.Subscriber{}).

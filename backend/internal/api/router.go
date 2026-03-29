@@ -68,6 +68,10 @@ func NewRouter(version string, startTime time.Time) http.Handler {
 		r.Get("/unsubscribe", HandleUnsubscribe)
 	})
 
+	// OAuth callbacks — public routes (Google/Zoho redirect here)
+	r.Get("/api/oauth/gmail/callback", GmailOAuthCallback)
+	r.Get("/api/oauth/zoho/callback", ZohoOAuthCallback)
+
 	// Auth routes
 	r.Route("/api/auth", func(r chi.Router) {
 		// Rate limit only mutation endpoints (login/register/password reset)
@@ -95,6 +99,7 @@ func NewRouter(version string, startTime time.Time) http.Handler {
 		r.Get("/projects/{id}", GetProject)
 		r.Put("/projects/{id}", UpdateProject)
 		r.Delete("/projects/{id}", DeleteProject)
+		r.Post("/projects/{id}/recover", RecoverProject)
 		r.Patch("/projects/{id}/status", UpdateProjectStatus)
 		r.Get("/projects/{id}/stats", GetProjectStats)
 
@@ -113,6 +118,12 @@ func NewRouter(version string, startTime time.Time) http.Handler {
 		r.Get("/projects/{id}/smtp", GetSMTP)
 		r.Put("/projects/{id}/smtp", SaveSMTP)
 		r.Post("/projects/{id}/smtp/test", TestSMTP)
+		r.Get("/projects/{id}/oauth/gmail/connect", GmailOAuthConnect)
+		r.Delete("/projects/{id}/oauth/gmail/disconnect", GmailOAuthDisconnect)
+		r.Get("/projects/{id}/oauth/zoho/connect", ZohoOAuthConnect)
+		r.Post("/projects/{id}/oauth/zoho/exchange", ZohoExchangeCode)
+		r.Put("/projects/{id}/oauth/zoho/email", ZohoSetEmail)
+		r.Delete("/projects/{id}/oauth/zoho/disconnect", ZohoOAuthDisconnect)
 
 		// API Keys
 		r.Get("/projects/{id}/keys", ListAPIKeys)

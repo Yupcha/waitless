@@ -16,6 +16,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/waitless/waitless/internal/api"
 	"github.com/waitless/waitless/internal/database"
+	"github.com/waitless/waitless/internal/models"
 	"github.com/waitless/waitless/internal/services"
 )
 
@@ -131,6 +132,25 @@ func main() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			slog.Error("Server error", "error", err)
 			os.Exit(1)
+		}
+	}()
+
+	// Background cleanup for hard-deleting expired projects
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			var projects []models.Project
+			database.DB.Where("status = ? AND scheduled_deletion_at < ?", models.ProjectPendingDeletion, time.Now()).Find(&projects)
+			for _, project := range projects {
+				slog.Info("Permanently deleting expired project", "project_id", project.ID)
+				database.DB.Where("project_id = ?", project.ID).Delete(&models.Subscriber{})
+				database.DB.Where("project_id = ?", project.ID).Delete(&models.ProjectSMTP{})
+				database.DB.Where("project_id = ?", project.ID).Delete(&models.APIKey{})
+				database.DB.Where("project_id = ?", project.ID).Delete(&models.EmailLog{})
+				database.DB.Where("project_id = ?", project.ID).Delete(&models.AnalyticsRecord{})
+				database.DB.Unscoped().Delete(&project)
+			}
 		}
 	}()
 

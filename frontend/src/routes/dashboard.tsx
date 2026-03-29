@@ -57,7 +57,7 @@ function DashboardLayout() {
   const handleLogout = async () => {
     try {
       await authApi.logout()
-      navigate({ to: '/login' })
+      window.location.href = '/login'
     } catch {
       toast.error('Logout failed')
     }

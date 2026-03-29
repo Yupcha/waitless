@@ -19,6 +19,7 @@ function CouponsPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [campaignFilter, setCampaignFilter] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
+  const [confirmModal, setConfirmModal] = useState<{ title: string, content: string, onConfirm: () => void } | null>(null)
 
   const defaultForm = {
     promo_code: '', is_default: false, enabled: true,
@@ -264,7 +265,11 @@ function CouponsPage() {
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: 4 }}>
                         <Pencil size={13} />
                       </button>
-                      <button onClick={() => { if (confirm('Delete this campaign?')) deleteMut.mutate(c.id) }}
+                      <button onClick={() => setConfirmModal({
+                          title: 'Delete Campaign',
+                          content: 'Are you sure you want to delete this campaign?',
+                          onConfirm: () => { deleteMut.mutate(c.id); setConfirmModal(null); }
+                        })}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f87171', padding: 4 }}>
                         <Trash2 size={13} />
                       </button>
@@ -366,6 +371,24 @@ function CouponsPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {confirmModal && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 999, backdropFilter: 'blur(3px)' }} onClick={() => setConfirmModal(null)} />
+          <div className="card" style={{
+            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            width: 400, zIndex: 1000, padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+          }}>
+            <h3 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 600, color: '#e2e8f0' }}>{confirmModal.title}</h3>
+            <p style={{ margin: '0 0 24px', fontSize: 14, color: '#94a3b8', lineHeight: 1.5 }}>{confirmModal.content}</p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button className="btn-secondary" onClick={() => setConfirmModal(null)} style={{ padding: '8px 16px' }}>Cancel</button>
+              <button className="btn-danger" onClick={confirmModal.onConfirm} disabled={deleteMut.isPending} style={{ padding: '8px 16px' }}>Confirm</button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

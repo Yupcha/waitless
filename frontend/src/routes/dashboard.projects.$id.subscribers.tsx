@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { subscribersApi } from '@/lib/api'
 import React, { useState } from 'react'
-import { Search, Download, Trash2, UserX, UserCheck, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
+import { Search, Download, Trash2, UserX, UserCheck, ChevronLeft, ChevronRight, ChevronDown, XCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatDate } from '@/lib/utils'
 
@@ -20,6 +20,7 @@ function SubscribersPage() {
   const [countryFilter, setCountryFilter] = useState('')
   const [selected, setSelected] = useState<string[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [confirmModal, setConfirmModal] = useState<{ title: string, content: string, onConfirm: () => void } | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['subscribers', id, page, search, statusFilter, countryFilter],
@@ -40,6 +41,11 @@ function SubscribersPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['subscribers', id] }),
   })
 
+  const deletePermanentMutation = useMutation({
+    mutationFn: (subId: string) => subscribersApi.delete(id, subId, true),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['subscribers', id] }),
+  })
+
   const toggleSelect = (subId: string) => {
     setSelected(s => s.includes(subId) ? s.filter(x => x !== subId) : [...s, subId])
   }
@@ -51,8 +57,11 @@ function SubscribersPage() {
 
   const handleBulk = (action: string) => {
     if (selected.length === 0) { toast.error('Select subscribers first'); return }
-    bulkMutation.mutate({ action, ids: selected },
-      { onSuccess: () => toast.success(`${action} applied to ${selected.length} subscribers`) })
+    bulkMutation.mutate({ action, ids: selected }, {
+      onSuccess: () => {
+        if (action !== 'delete') toast.success(`${action} applied to ${selected.length} subscribers`)
+      }
+    })
   }
 
   return (
@@ -105,8 +114,26 @@ function SubscribersPage() {
             <UserCheck size={13} /> Resubscribe
           </button>
           <button className="btn-danger" style={{ padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 5 }}
-            onClick={() => { if (confirm(`Delete ${selected.length} subscribers?`)) handleBulk('delete') }}>
+            onClick={() => {
+              if (selected.length === 0) { toast.error('Select subscribers first'); return }
+              setConfirmModal({
+                title: 'Delete Subscribers',
+                content: `Are you sure you want to delete ${selected.length} subscribers?`,
+                onConfirm: () => { handleBulk('delete'); setConfirmModal(null); }
+              })
+            }}>
             <Trash2 size={13} /> Delete
+          </button>
+          <button className="btn-danger" style={{ padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(239, 68, 68, 0.2)' }}
+            onClick={() => {
+              if (selected.length === 0) { toast.error('Select subscribers first'); return }
+              setConfirmModal({
+                title: 'Permanently Delete Subscribers',
+                content: `Are you sure you want to completely erase ${selected.length} subscribers? This action cannot be undone.`,
+                onConfirm: () => { handleBulk('delete_permanent'); setConfirmModal(null); }
+              })
+            }}>
+            <XCircle size={13} /> Delete Permanently
           </button>
         </div>
       )}
@@ -153,7 +180,7 @@ function SubscribersPage() {
                   </td>
                   <td style={{ color: '#94a3b8' }}>{s.email}</td>
                   <td>
-                    <span className={`badge ${s.status === 'active' ? 'badge-green' : 'badge-gray'}`}>
+                    <span className={`badge ${s.status === 'active' ? 'badge-green' : s.status === 'deleted' ? 'badge-red' : 'badge-gray'}`}>
                       {s.status}
                     </span>
                   </td>
@@ -188,12 +215,28 @@ function SubscribersPage() {
                     ) : <span style={{ color: '#334155' }}>—</span>}
                   </td>
                   <td style={{ color: '#64748b', fontSize: 13 }}>{formatDate(s.created_at)}</td>
-                  <td>
+                  <td style={{ display: 'flex', gap: 4 }}>
                     <button
-                      onClick={() => { if (confirm('Delete this subscriber?')) deleteMutation.mutate(s.id) }}
+                      onClick={() => setConfirmModal({
+                        title: 'Delete Subscriber',
+                        content: 'Are you sure you want to delete this subscriber?',
+                        onConfirm: () => { deleteMutation.mutate(s.id); setConfirmModal(null); }
+                      })}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', padding: 4 }}
+                      title="Delete"
                     >
                       <Trash2 size={14} />
+                    </button>
+                    <button
+                      onClick={() => setConfirmModal({
+                        title: 'Permanently Delete',
+                        content: 'Are you sure you want to permanently erase this subscriber? This cannot be undone.',
+                        onConfirm: () => { deletePermanentMutation.mutate(s.id); setConfirmModal(null); }
+                      })}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 4 }}
+                      title="Permanently Delete"
+                    >
+                      <XCircle size={14} />
                     </button>
                   </td>
                 </tr>
@@ -245,6 +288,23 @@ function SubscribersPage() {
           </div>
         )}
       </div>
+
+      {confirmModal && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 999, backdropFilter: 'blur(3px)' }} onClick={() => setConfirmModal(null)} />
+          <div className="card" style={{
+            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            width: 400, zIndex: 1000, padding: 24, paddingBottom: 20, boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+          }}>
+            <h3 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 600, color: '#e2e8f0' }}>{confirmModal.title}</h3>
+            <p style={{ margin: '0 0 24px', fontSize: 14, color: '#94a3b8', lineHeight: 1.5 }}>{confirmModal.content}</p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button className="btn-secondary" onClick={() => setConfirmModal(null)} style={{ padding: '8px 16px' }}>Cancel</button>
+              <button className="btn-danger" onClick={confirmModal.onConfirm} style={{ padding: '8px 16px' }}>Confirm</button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

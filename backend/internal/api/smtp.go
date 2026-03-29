@@ -12,6 +12,7 @@ import (
 )
 
 type smtpRequest struct {
+	Provider  string `json:"provider"` // "smtp" | "gmail_oauth" | "zoho_oauth"
 	Host      string `json:"host"`
 	Port      int    `json:"port"`
 	Username  string `json:"username"`
@@ -61,6 +62,9 @@ func SaveSMTP(w http.ResponseWriter, r *http.Request) {
 		smtp = models.ProjectSMTP{ProjectID: projectID}
 	}
 
+	if req.Provider != "" {
+		smtp.Provider = req.Provider
+	}
 	smtp.Host = req.Host
 	smtp.Port = req.Port
 	if smtp.Port == 0 {
@@ -112,7 +116,11 @@ func TestSMTP(w http.ResponseWriter, r *http.Request) {
 	database.DB.Where("id = ?", projectID).First(&project)
 
 	emailSvc := services.NewEmailService()
-	if err := emailSvc.SendTestSMTP(&smtp, &project, user.Email); err != nil {
+	toEmail := user.Email
+	if (smtp.Provider == "gmail_oauth" || smtp.Provider == "zoho_oauth") && smtp.OAuthEmail != "" {
+		toEmail = smtp.OAuthEmail
+	}
+	if err := emailSvc.SendTestSMTP(&smtp, &project, toEmail); err != nil {
 		database.DB.Model(&smtp).Update("verified", false)
 		jsonError(w, "SMTP test failed: "+err.Error(), http.StatusBadRequest)
 		return

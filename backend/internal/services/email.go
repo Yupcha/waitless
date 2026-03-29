@@ -1,8 +1,22 @@
 package services
 
 import (
+	"bytes"
+	"context"
 	"crypto/tls"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"net"
+	"net/http"
+	"net/smtp"
+	"os"
+	"strings"
+	"time"
+
+	"golang.org/x/oauth2"
 
 	"github.com/waitless/waitless/internal/models"
 	"gopkg.in/gomail.v2"
@@ -23,15 +37,181 @@ type SendEmailRequest struct {
 	TextBody string
 }
 
-func (s *EmailService) Send(req SendEmailRequest) error {
-	if req.SMTP == nil {
-		return fmt.Errorf("no SMTP config provided")
+// xoauth2Auth implements smtp.Auth for the XOAUTH2 mechanism used by Gmail.
+type xoauth2Auth struct {
+	user  string
+	token string
+}
+
+func (a xoauth2Auth) Start(_ *smtp.ServerInfo) (string, []byte, error) {
+	payload := fmt.Sprintf("user=%s\x01auth=Bearer %s\x01\x01", a.user, a.token)
+	return "XOAUTH2", []byte(payload), nil
+}
+
+func (a xoauth2Auth) Next(_ []byte, more bool) ([]byte, error) {
+	if more {
+		return nil, fmt.Errorf("unexpected server challenge")
+	}
+	return nil, nil
+}
+
+// getValidAccessToken decrypts tokens and refreshes via OAuth2 if expired.
+// provider should be "gmail_oauth" or "zoho_oauth".
+func getValidAccessToken(s *models.ProjectSMTP) (string, error) {
+	accessToken, err := Decrypt(s.OAuthAccessToken)
+	if err != nil {
+		return "", fmt.Errorf("failed to decrypt access token: %w", err)
+	}
+	if s.OAuthTokenExpiry != nil && time.Now().Before(s.OAuthTokenExpiry.Add(-30*time.Second)) {
+		return accessToken, nil
+	}
+	// Token might be expired — refresh it
+	refreshToken, err := Decrypt(s.OAuthRefreshToken)
+	if err != nil {
+		return "", fmt.Errorf("failed to decrypt refresh token: %w", err)
+	}
+	var cfg *oauth2.Config
+	if s.Provider == "zoho_oauth" {
+		cfg = ZohoOAuthConfig()
+	} else {
+		cfg = GmailOAuthConfig()
+	}
+	ts := cfg.TokenSource(context.Background(), &oauth2.Token{
+		RefreshToken: refreshToken,
+		Expiry:       time.Now().Add(-1 * time.Hour), // force refresh
+	})
+	newToken, err := ts.Token()
+	if err != nil {
+		return "", fmt.Errorf("failed to refresh OAuth2 token: %w", err)
+	}
+	s.OAuthTokenExpiry = &newToken.Expiry
+	return newToken.AccessToken, nil
+}
+
+// sendViaGmailOAuth uses Gmail SMTP with XOAUTH2 to send a message.
+func sendViaGmailOAuth(smtpCfg *models.ProjectSMTP, rawMessage string) error {
+	accessToken, err := getValidAccessToken(smtpCfg)
+	if err != nil {
+		return err
 	}
 
-	// Decrypt password
+	addr := "smtp.gmail.com:587"
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("dial smtp: %w", err)
+	}
+	c, err := smtp.NewClient(conn, "smtp.gmail.com")
+	if err != nil {
+		return fmt.Errorf("new smtp client: %w", err)
+	}
+	defer c.Close()
+
+	if err = c.StartTLS(&tls.Config{ServerName: "smtp.gmail.com"}); err != nil {
+		return fmt.Errorf("starttls: %w", err)
+	}
+
+	auth := xoauth2Auth{user: smtpCfg.OAuthEmail, token: accessToken}
+	if err = c.Auth(auth); err != nil {
+		return fmt.Errorf("oauth2 auth: %w", err)
+	}
+
+	if err = c.Mail(smtpCfg.FromEmail); err != nil {
+		return fmt.Errorf("MAIL FROM: %w", err)
+	}
+	if err = c.Rcpt(smtpCfg.Username); err != nil { // Username field stores recipient for test; we set TO dynamically
+		_ = err // ignore — actual recipient passed in rawMessage; some servers allow anyway
+	}
+
+	w, err := c.Data()
+	if err != nil {
+		return fmt.Errorf("DATA: %w", err)
+	}
+	if _, err = fmt.Fprintf(w, "%s", rawMessage); err != nil {
+		return fmt.Errorf("writing message: %w", err)
+	}
+	return w.Close()
+}
+
+// buildRawMessage constructs a minimal RFC 2822 email message string.
+func buildRawMessage(from, fromName, to, toName, subject, htmlBody, textBody string) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("From: %s <%s>\r\n", fromName, from))
+	sb.WriteString(fmt.Sprintf("To: %s <%s>\r\n", toName, to))
+	sb.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
+	sb.WriteString("MIME-Version: 1.0\r\n")
+	boundary := "====WAITLESS_BOUNDARY===="
+	sb.WriteString(fmt.Sprintf("Content-Type: multipart/alternative; boundary=\"%s\"\r\n\r\n", boundary))
+	if textBody != "" {
+		sb.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+		sb.WriteString("Content-Type: text/plain; charset=utf-8\r\n\r\n")
+		sb.WriteString(textBody + "\r\n")
+	}
+	if htmlBody != "" {
+		sb.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+		sb.WriteString("Content-Type: text/html; charset=utf-8\r\n")
+		sb.WriteString("Content-Transfer-Encoding: base64\r\n\r\n")
+		sb.WriteString(base64.StdEncoding.EncodeToString([]byte(htmlBody)) + "\r\n")
+	}
+	sb.WriteString(fmt.Sprintf("--%s--\r\n", boundary))
+	return sb.String()
+}
+
+func (s *EmailService) Send(req SendEmailRequest) error {
+	if req.SMTP == nil {
+		return fmt.Errorf("no email config provided")
+	}
+
+	// Gmail OAuth2 via SMTP XOAUTH2
+	if req.SMTP.Provider == "gmail_oauth" {
+		accessToken, err := getValidAccessToken(req.SMTP)
+		if err != nil {
+			return err
+		}
+
+		smtpHost := "smtp.gmail.com"
+		smtpAddr := "smtp.gmail.com:587"
+
+		conn, err := net.Dial("tcp", smtpAddr)
+		if err != nil {
+			return fmt.Errorf("dial smtp: %w", err)
+		}
+		c, err := smtp.NewClient(conn, smtpHost)
+		if err != nil {
+			return fmt.Errorf("new smtp client: %w", err)
+		}
+		defer c.Close()
+
+		if err = c.StartTLS(&tls.Config{ServerName: smtpHost}); err != nil {
+			return fmt.Errorf("starttls: %w", err)
+		}
+		if err = c.Auth(xoauth2Auth{user: req.SMTP.OAuthEmail, token: accessToken}); err != nil {
+			return fmt.Errorf("xoauth2 auth: %w", err)
+		}
+		if err = c.Mail(req.SMTP.OAuthEmail); err != nil {
+			return fmt.Errorf("MAIL FROM: %w", err)
+		}
+		if err = c.Rcpt(req.To); err != nil {
+			return fmt.Errorf("RCPT TO: %w", err)
+		}
+		w, err := c.Data()
+		if err != nil {
+			return fmt.Errorf("DATA: %w", err)
+		}
+		raw := buildRawMessage(req.SMTP.OAuthEmail, req.SMTP.FromName, req.To, req.ToName, req.Subject, req.HTMLBody, req.TextBody)
+		if _, err = fmt.Fprint(w, raw); err != nil {
+			return err
+		}
+		return w.Close()
+	}
+
+	// Zoho OAuth2 via Zoho Mail REST API (Zoho SMTP doesn't support XOAUTH2)
+	if req.SMTP.Provider == "zoho_oauth" {
+		return sendViaZohoAPI(req)
+	}
+
+	// Standard password-based SMTP path
 	password, err := Decrypt(req.SMTP.Password)
 	if err != nil {
-		// Fallback: try using raw password (for legacy/unencrypted)
 		password = req.SMTP.Password
 	}
 
@@ -39,8 +219,6 @@ func (s *EmailService) Send(req SendEmailRequest) error {
 	m.SetAddressHeader("From", req.SMTP.FromEmail, req.SMTP.FromName)
 	m.SetAddressHeader("To", req.To, req.ToName)
 	m.SetHeader("Subject", req.Subject)
-
-	// Add List-Unsubscribe header for CAN-SPAM compliance
 	m.SetHeader("List-Unsubscribe", "<mailto:"+req.SMTP.FromEmail+"?subject=unsubscribe>")
 
 	if req.HTMLBody != "" {
@@ -62,6 +240,7 @@ func (s *EmailService) Send(req SendEmailRequest) error {
 
 	return d.DialAndSend(m)
 }
+
 
 func (s *EmailService) SendWelcome(smtp *models.ProjectSMTP, project *models.Project, subscriber *models.Subscriber, coupon *models.CouponCode, baseURL string) error {
 	subject := project.WelcomeSubject
@@ -262,4 +441,88 @@ func (s *EmailService) SendTestSMTP(smtp *models.ProjectSMTP, project *models.Pr
 </html>`, project.Name),
 		TextBody: fmt.Sprintf("SMTP test successful for %s! Your SMTP configuration is working correctly.", project.Name),
 	})
+}
+
+// sendViaZohoAPI sends email using the Zoho Mail REST API.
+// Zoho SMTP doesn't support XOAUTH2, so we use their HTTP API instead.
+func sendViaZohoAPI(req SendEmailRequest) error {
+	accessToken, err := getValidAccessToken(req.SMTP)
+	if err != nil {
+		return fmt.Errorf("zoho: get access token: %w", err)
+	}
+
+	// Determine the Zoho API domain
+	zohoDomain := os.Getenv("ZOHO_DOMAIN")
+	if zohoDomain == "" {
+		zohoDomain = "zoho.in"
+	}
+	mailBase := "https://mail." + zohoDomain
+
+	// Step 1: Get Account ID
+	accReq, _ := http.NewRequest("GET", mailBase+"/api/accounts", nil)
+	accReq.Header.Set("Authorization", "Zoho-oauthtoken "+accessToken)
+	accResp, err := http.DefaultClient.Do(accReq)
+	if err != nil {
+		return fmt.Errorf("zoho: fetch accounts: %w", err)
+	}
+	defer accResp.Body.Close()
+	accBody, _ := io.ReadAll(accResp.Body)
+	log.Printf("[zoho-send] accounts response (%d): %s", accResp.StatusCode, string(accBody))
+
+	var accData struct {
+		Data []struct {
+			AccountID string `json:"accountId"`
+			MailID    string `json:"mailId"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(accBody, &accData); err != nil || len(accData.Data) == 0 {
+		return fmt.Errorf("zoho: no accounts found (response: %s)", string(accBody))
+	}
+	accountID := accData.Data[0].AccountID
+
+	// Step 2: Send email via Zoho Mail API
+	content := req.HTMLBody
+	if content == "" {
+		content = req.TextBody
+	}
+
+	payload := map[string]interface{}{
+		"fromAddress": req.SMTP.OAuthEmail,
+		"toAddress":   req.To,
+		"subject":     req.Subject,
+		"content":     content,
+		"askReceipt":  "no",
+	}
+	jsonBody, _ := json.Marshal(payload)
+
+	msgURL := fmt.Sprintf("%s/api/accounts/%s/messages", mailBase, accountID)
+	log.Printf("[zoho-send] POST %s from=%s to=%s", msgURL, req.SMTP.OAuthEmail, req.To)
+
+	msgReq, _ := http.NewRequest("POST", msgURL, bytes.NewReader(jsonBody))
+	msgReq.Header.Set("Authorization", "Zoho-oauthtoken "+accessToken)
+	msgReq.Header.Set("Content-Type", "application/json")
+	msgResp, err := http.DefaultClient.Do(msgReq)
+	if err != nil {
+		return fmt.Errorf("zoho: send request failed: %w", err)
+	}
+	defer msgResp.Body.Close()
+
+	respBody, _ := io.ReadAll(msgResp.Body)
+	log.Printf("[zoho-send] response (%d): %s", msgResp.StatusCode, string(respBody))
+
+	var sendResp struct {
+		Status struct {
+			Code    int    `json:"code"`
+			Desc    string `json:"description"`
+		} `json:"status"`
+	}
+	if err := json.Unmarshal(respBody, &sendResp); err != nil {
+		return fmt.Errorf("zoho: parse send response: %s", string(respBody))
+	}
+	if sendResp.Status.Code != 200 {
+		return fmt.Errorf("zoho send failed (%d): %s", sendResp.Status.Code, sendResp.Status.Desc)
+	}
+
+	log.Printf("[zoho-send] email sent successfully to %s", req.To)
+	return nil
 }

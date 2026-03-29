@@ -1,7 +1,7 @@
 # Binaries
 waitless
 *.exe
-
+.ag-response.md
 # Dependencies
 frontend/node_modules/
 frontend/dist/

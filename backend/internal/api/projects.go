@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"golang.org/x/crypto/bcrypt"
 	"github.com/waitless/waitless/internal/database"
 	"github.com/waitless/waitless/internal/middleware"
 	"github.com/waitless/waitless/internal/models"
@@ -171,6 +172,25 @@ func DeleteProject(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
 	projectID := chi.URLParam(r, "id")
 
+	var req struct {
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	var dbUser models.User
+	if err := database.DB.Where("id = ?", user.ID).First(&dbUser).Error; err != nil {
+		jsonError(w, "user not found", http.StatusNotFound)
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(dbUser.PasswordHash), []byte(req.Password)); err != nil {
+		jsonError(w, "invalid password", http.StatusUnauthorized)
+		return
+	}
+
 	var project models.Project
 	query := database.DB
 	if user.Role != models.RoleAdmin {
@@ -181,14 +201,35 @@ func DeleteProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	database.DB.Where("project_id = ?", project.ID).Delete(&models.Subscriber{})
-	database.DB.Where("project_id = ?", project.ID).Delete(&models.ProjectSMTP{})
-	database.DB.Where("project_id = ?", project.ID).Delete(&models.APIKey{})
-	database.DB.Where("project_id = ?", project.ID).Delete(&models.EmailLog{})
-	database.DB.Where("project_id = ?", project.ID).Delete(&models.AnalyticsRecord{})
-	database.DB.Delete(&project)
+	// Soft delete the project (14-day retention)
+	deleteTime := time.Now().AddDate(0, 0, 14)
+	project.Status = models.ProjectPendingDeletion
+	project.ScheduledDeletionAt = &deleteTime
+	database.DB.Save(&project)
 
-	jsonResponse(w, map[string]string{"message": "deleted"}, http.StatusOK)
+	jsonResponse(w, map[string]string{"message": "scheduled_for_deletion"}, http.StatusOK)
+}
+
+func RecoverProject(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUser(r)
+	projectID := chi.URLParam(r, "id")
+
+	var project models.Project
+	query := database.DB
+	if user.Role != models.RoleAdmin {
+		query = query.Where("user_id = ?", user.ID)
+	}
+	// Fetch the project even if it's pending deletion
+	if err := query.Where("id = ?", projectID).First(&project).Error; err != nil {
+		jsonError(w, "project not found", http.StatusNotFound)
+		return
+	}
+
+	project.Status = models.ProjectActive
+	project.ScheduledDeletionAt = nil
+	database.DB.Save(&project)
+
+	jsonResponse(w, map[string]string{"message": "recovered"}, http.StatusOK)
 }
 
 func GetProjectBySlug(w http.ResponseWriter, r *http.Request) {

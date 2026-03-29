@@ -42,7 +42,8 @@ export const projectsApi = {
   create: (data: any) => api.post('/dashboard/projects', data),
   get: (id: string) => api.get(`/dashboard/projects/${id}`),
   update: (id: string, data: any) => api.put(`/dashboard/projects/${id}`, data),
-  delete: (id: string) => api.delete(`/dashboard/projects/${id}`),
+  delete: (id: string, password?: string) => api.delete(`/dashboard/projects/${id}`, { data: { password } }),
+  recover: (id: string) => api.post(`/dashboard/projects/${id}/recover`),
   stats: (id: string) => api.get(`/dashboard/projects/${id}/stats`),
   updateStatus: (id: string, status: string) =>
     api.patch(`/dashboard/projects/${id}/status`, { status }),
@@ -54,8 +55,8 @@ export const subscribersApi = {
     api.get(`/dashboard/projects/${projectId}/subscribers`, { params }),
   export: (projectId: string) =>
     `/api/dashboard/projects/${projectId}/subscribers/export`,
-  delete: (projectId: string, subId: string) =>
-    api.delete(`/dashboard/projects/${projectId}/subscribers/${subId}`),
+  delete: (projectId: string, subId: string, permanent?: boolean) =>
+    api.delete(`/dashboard/projects/${projectId}/subscribers/${subId}${permanent ? '?permanent=true' : ''}`),
   updateStatus: (projectId: string, subId: string, status: string) =>
     api.patch(`/dashboard/projects/${projectId}/subscribers/${subId}/status`, { status }),
   bulk: (projectId: string, action: string, ids: string[]) =>
@@ -69,6 +70,18 @@ export const smtpApi = {
     api.put(`/dashboard/projects/${projectId}/smtp`, data),
   test: (projectId: string) =>
     api.post(`/dashboard/projects/${projectId}/smtp/test`),
+  gmailConnect: (projectId: string) =>
+    api.get(`/dashboard/projects/${projectId}/oauth/gmail/connect`),
+  gmailDisconnect: (projectId: string) =>
+    api.delete(`/dashboard/projects/${projectId}/oauth/gmail/disconnect`),
+  zohoConnect: (projectId: string) =>
+    api.get(`/dashboard/projects/${projectId}/oauth/zoho/connect`),
+  zohoExchange: (projectId: string, code: string, email: string) =>
+    api.post(`/dashboard/projects/${projectId}/oauth/zoho/exchange`, { code, email }),
+  zohoSetEmail: (projectId: string, email: string) =>
+    api.put(`/dashboard/projects/${projectId}/oauth/zoho/email`, { email }),
+  zohoDisconnect: (projectId: string) =>
+    api.delete(`/dashboard/projects/${projectId}/oauth/zoho/disconnect`),
 }
 
 // API Keys
