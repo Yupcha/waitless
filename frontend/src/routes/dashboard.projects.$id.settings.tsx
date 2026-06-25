@@ -3,31 +3,56 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { projectsApi } from '@/lib/api'
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
-import { Trash2, AlertTriangle, Plus, ChevronUp, ChevronDown, X, RefreshCw, Lock } from 'lucide-react'
+import {
+  Trash2, AlertTriangle, Plus, ChevronUp, ChevronDown, X, RefreshCw, Lock,
+  Settings2, Sparkles, ListPlus, Power, GripVertical,
+} from 'lucide-react'
 
 export const Route = createFileRoute('/dashboard/projects/$id/settings')({
   component: ProjectSettings,
 })
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 500, color: '#94a3b8' }}>{label}</label>
-      {children}
-    </div>
-  )
-}
 
 type CustomField = {
   key: string; label: string; type: string; required: boolean;
   placeholder?: string; options?: string[];
 }
 
+function SectionCard({
+  icon, title, subtitle, action, children,
+}: {
+  icon: React.ReactNode
+  title: string
+  subtitle?: string
+  action?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <section className="card" style={{ padding: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: subtitle ? 4 : 18 }}>
+        <span
+          className="icon-tile"
+          style={{ width: 38, height: 38, flexShrink: 0, color: '#d8b4fe' }}
+        >
+          {icon}
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--ink)' }}>{title}</h3>
+          {subtitle && (
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--ink-faint)', lineHeight: 1.5 }}>{subtitle}</p>
+          )}
+        </div>
+        {action}
+      </div>
+      <div style={{ marginTop: subtitle ? 18 : 0 }}>{children}</div>
+    </section>
+  )
+}
+
 function ProjectSettings() {
   const { id } = Route.useParams()
   const qc = useQueryClient()
 
-  const { data: project } = useQuery({
+  const { data: project, isLoading } = useQuery({
     queryKey: ['project', id],
     queryFn: () => projectsApi.get(id).then(r => r.data),
   })
@@ -37,7 +62,7 @@ function ProjectSettings() {
 
   const [form, setForm] = useState({
     name: '', description: '', logo_url: '', launch_date: '',
-    features: '', offer_title: '', current_price: '', discount_price: '', theme_color: '#6366f1',
+    features: '', offer_title: '', current_price: '', discount_price: '', theme_color: '#c084fc',
     custom_fields: '[]',
   })
 
@@ -54,7 +79,7 @@ function ProjectSettings() {
         offer_title: project.offer_title || '',
         current_price: project.current_price || '',
         discount_price: project.discount_price || '',
-        theme_color: project.theme_color || '#6366f1',
+        theme_color: project.theme_color || '#c084fc',
         custom_fields: project.custom_fields || '[]',
       })
       try {
@@ -131,129 +156,177 @@ function ProjectSettings() {
     onError: () => toast.error('Failed to recover project'),
   })
 
+  // ── Loading state ──
+  if (isLoading) {
+    return (
+      <div style={{ maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="skeleton" style={{ height: 32, width: 220, borderRadius: 10 }} />
+        {[0, 1, 2].map(i => (
+          <div key={i} className="skeleton" style={{ height: i === 2 ? 220 : 260, borderRadius: 18 }} />
+        ))}
+      </div>
+    )
+  }
+
   return (
-    <div style={{ maxWidth: 600 }}>
-      <form onSubmit={e => { e.preventDefault(); updateMutation.mutate() }}>
+    <div style={{ maxWidth: 720 }} className="fade-in">
+      {/* Page header */}
+      <header style={{ marginBottom: 24 }}>
+        <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.01em' }}>
+          Project settings
+        </h1>
+        <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--ink-muted)' }}>
+          Manage branding, landing page content, and lifecycle for this waitlist.
+        </p>
+      </header>
+
+      <form
+        onSubmit={e => { e.preventDefault(); updateMutation.mutate() }}
+        style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
+        className="stagger"
+      >
         {/* General */}
-        <div className="card" style={{ padding: 28, marginBottom: 20 }}>
-          <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 600, color: '#e2e8f0' }}>General</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <Field label="Project Name">
-              <input className="input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
-            </Field>
-            <Field label="Description">
-              <textarea className="input" value={form.description} rows={3} style={{ resize: 'vertical' }}
+        <SectionCard icon={<Settings2 size={18} />} title="General">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div>
+              <label htmlFor="set-name" className="field-label">Project name</label>
+              <input id="set-name" className="input" value={form.name}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+            </div>
+            <div>
+              <label htmlFor="set-desc" className="field-label">Description</label>
+              <textarea id="set-desc" className="input" value={form.description} rows={3} style={{ resize: 'vertical' }}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
-            </Field>
-            <Field label="Logo URL">
-              <input className="input" type="url" value={form.logo_url}
+              <p className="help-text">A short summary shown alongside your waitlist.</p>
+            </div>
+            <div>
+              <label htmlFor="set-logo" className="field-label">Logo URL</label>
+              <input id="set-logo" className="input" type="url" value={form.logo_url}
+                placeholder="https://yoursite.com/logo.png"
                 onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))} />
-            </Field>
-            <Field label="Theme Color">
+            </div>
+            <div>
+              <label htmlFor="set-theme" className="field-label">Theme color</label>
               <div style={{ display: 'flex', gap: 12 }}>
-                <input type="color" value={form.theme_color}
+                <input type="color" aria-label="Pick theme color" value={form.theme_color}
                   onChange={e => setForm(f => ({ ...f, theme_color: e.target.value }))}
-                  style={{ width: 48, height: 40, borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'none', padding: 2, cursor: 'pointer' }} />
-                <input className="input" value={form.theme_color}
+                  style={{ width: 48, height: 44, borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255,255,255,0.1)', background: 'none', padding: 2, cursor: 'pointer' }} />
+                <input id="set-theme" className="input" value={form.theme_color}
                   onChange={e => setForm(f => ({ ...f, theme_color: e.target.value }))} style={{ flex: 1 }} />
               </div>
-            </Field>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="card" style={{ padding: 28, marginBottom: 20 }}>
-          <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 600, color: '#e2e8f0' }}>Landing Page</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <Field label="Launch Date">
-              <input className="input" type="date" value={form.launch_date}
-                onChange={e => setForm(f => ({ ...f, launch_date: e.target.value }))} />
-            </Field>
-            <Field label="Headline">
-              <input className="input" value={form.offer_title}
-                onChange={e => setForm(f => ({ ...f, offer_title: e.target.value }))} />
-            </Field>
-            <Field label="Features (comma-separated)">
-              <input className="input" value={form.features}
-                onChange={e => setForm(f => ({ ...f, features: e.target.value }))} />
-            </Field>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Field label="Regular Price">
-                <input className="input" value={form.current_price}
-                  onChange={e => setForm(f => ({ ...f, current_price: e.target.value }))} />
-              </Field>
-              <Field label="Launch Price">
-                <input className="input" value={form.discount_price}
-                  onChange={e => setForm(f => ({ ...f, discount_price: e.target.value }))} />
-              </Field>
+              <p className="help-text">Accent color used across your public waitlist page.</p>
             </div>
           </div>
-        </div>
+        </SectionCard>
+
+        {/* Content */}
+        <SectionCard icon={<Sparkles size={18} />} title="Landing page" subtitle="The story visitors see before they sign up.">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div>
+              <label htmlFor="set-launch" className="field-label">Launch date</label>
+              <input id="set-launch" className="input" type="date" value={form.launch_date}
+                onChange={e => setForm(f => ({ ...f, launch_date: e.target.value }))} />
+            </div>
+            <div>
+              <label htmlFor="set-headline" className="field-label">Headline</label>
+              <input id="set-headline" className="input" value={form.offer_title}
+                placeholder="Be the first to try it"
+                onChange={e => setForm(f => ({ ...f, offer_title: e.target.value }))} />
+            </div>
+            <div>
+              <label htmlFor="set-features" className="field-label">Features</label>
+              <input id="set-features" className="input" value={form.features}
+                placeholder="Fast, Private, Open source"
+                onChange={e => setForm(f => ({ ...f, features: e.target.value }))} />
+              <p className="help-text">Comma-separated list of highlights.</p>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
+              <div>
+                <label htmlFor="set-price" className="field-label">Regular price</label>
+                <input id="set-price" className="input" value={form.current_price}
+                  onChange={e => setForm(f => ({ ...f, current_price: e.target.value }))} />
+              </div>
+              <div>
+                <label htmlFor="set-discount" className="field-label">Launch price</label>
+                <input id="set-discount" className="input" value={form.discount_price}
+                  onChange={e => setForm(f => ({ ...f, discount_price: e.target.value }))} />
+              </div>
+            </div>
+          </div>
+        </SectionCard>
 
         {/* Custom Form Fields Builder */}
-        <div className="card" style={{ padding: 28, marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#e2e8f0' }}>Custom Form Fields</h3>
-            <button type="button" className="btn-secondary" style={{ padding: '6px 12px', fontSize: 12 }}
+        <SectionCard
+          icon={<ListPlus size={18} />}
+          title="Custom form fields"
+          subtitle="Add your own questions to the waitlist signup form."
+          action={
+            <button type="button" className="btn-secondary" style={{ padding: '8px 14px', fontSize: 13, flexShrink: 0 }}
               onClick={addField}>
-              <Plus size={12} /> Add Field
+              <Plus size={14} /> Add field
             </button>
-          </div>
-          <p style={{ fontSize: 13, color: '#475569', margin: '0 0 16px' }}>
-            Add custom questions to your waitlist signup form.
-          </p>
-
+          }
+        >
           {fields.length === 0 ? (
-            <div style={{ padding: 24, textAlign: 'center', color: '#334155', fontSize: 13, border: '1px dashed rgba(255,255,255,0.06)', borderRadius: 10 }}>
-              No custom fields. Click "Add Field" to get started.
+            <div style={{
+              padding: '32px 24px', textAlign: 'center', color: 'var(--ink-faint)', fontSize: 13,
+              border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 'var(--radius-md)',
+            }}>
+              <ListPlus size={22} style={{ margin: '0 auto 10px', display: 'block', opacity: 0.5 }} />
+              No custom fields yet. Add one to collect more from your subscribers.
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {fields.map((f, i) => (
                 <div key={i} style={{
-                  padding: 16, borderRadius: 12,
-                  background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+                  padding: 16, borderRadius: 'var(--radius-md)',
+                  background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)',
                 }}>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <button type="button" onClick={() => moveField(i, -1)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', padding: 0 }}>
-                        <ChevronUp size={12} />
+                  <div style={{ display: 'flex', gap: 10, marginBottom: 12, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', color: 'var(--ink-faint)' }}>
+                      <button type="button" aria-label="Move field up" onClick={() => moveField(i, -1)} disabled={i === 0}
+                        style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: 'inherit', padding: 0, opacity: i === 0 ? 0.3 : 1 }}>
+                        <ChevronUp size={14} />
                       </button>
-                      <button type="button" onClick={() => moveField(i, 1)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', padding: 0 }}>
-                        <ChevronDown size={12} />
+                      <GripVertical size={12} style={{ opacity: 0.4, margin: '1px 1px' }} />
+                      <button type="button" aria-label="Move field down" onClick={() => moveField(i, 1)} disabled={i === fields.length - 1}
+                        style={{ background: 'none', border: 'none', cursor: i === fields.length - 1 ? 'default' : 'pointer', color: 'inherit', padding: 0, opacity: i === fields.length - 1 ? 0.3 : 1 }}>
+                        <ChevronDown size={14} />
                       </button>
                     </div>
                     <input className="input" placeholder="Label (e.g. Which city?)" value={f.label}
-                      onChange={e => editField(i, { label: e.target.value })} style={{ flex: 1 }} />
-                    <select className="input" value={f.type} style={{ width: 110 }}
+                      onChange={e => editField(i, { label: e.target.value })} style={{ flex: 1, minWidth: 0 }} />
+                    <select className="input" value={f.type} style={{ width: 120, flexShrink: 0 }}
+                      aria-label="Field type"
                       onChange={e => editField(i, { type: e.target.value })}>
                       <option value="text">Text</option>
                       <option value="textarea">Textarea</option>
                       <option value="select">Dropdown</option>
                       <option value="checkbox">Checkbox</option>
                     </select>
-                    <button type="button" onClick={() => removeField(i)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f87171', padding: 4 }}>
-                      <X size={14} />
+                    <button type="button" aria-label="Remove field" onClick={() => removeField(i)}
+                      className="icon-btn"
+                      style={{ color: '#f87171', flexShrink: 0 }}>
+                      <X size={16} />
                     </button>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                     <input className="input" placeholder="Key (auto)" value={f.key}
                       onChange={e => editField(i, { key: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
-                      style={{ width: 120, fontSize: 12 }} />
+                      style={{ width: 130, fontSize: 12 }} />
                     {f.type !== 'checkbox' && (
                       <input className="input" placeholder="Placeholder text" value={f.placeholder || ''}
-                        onChange={e => editField(i, { placeholder: e.target.value })} style={{ flex: 1, fontSize: 12 }} />
+                        onChange={e => editField(i, { placeholder: e.target.value })} style={{ flex: 1, minWidth: 140, fontSize: 12 }} />
                     )}
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={f.required} onChange={e => editField(i, { required: e.target.checked })} />
-                      <span style={{ fontSize: 12, color: '#64748b' }}>Required</span>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', cursor: 'pointer', marginLeft: 'auto' }}>
+                      <span className={`switch${f.required ? ' on' : ''}`}
+                        role="switch" aria-checked={f.required} aria-label="Required field"
+                        onClick={() => editField(i, { required: !f.required })} />
+                      <span style={{ fontSize: 12, color: 'var(--ink-muted)' }}>Required</span>
                     </label>
                   </div>
                   {f.type === 'select' && (
-                    <div style={{ marginTop: 8 }}>
+                    <div style={{ marginTop: 10 }}>
                       <input className="input" placeholder="Options (comma-separated)" style={{ fontSize: 12 }}
                         value={(f.options || []).join(', ')}
                         onChange={e => editField(i, { options: e.target.value.split(',').map(o => o.trim()).filter(Boolean) })} />
@@ -263,91 +336,110 @@ function ProjectSettings() {
               ))}
             </div>
           )}
-        </div>
+        </SectionCard>
 
-        <button className="btn-primary" type="submit" style={{ padding: '12px 24px', marginBottom: 32 }}
-          disabled={updateMutation.isPending}>
-          {updateMutation.isPending ? 'Saving...' : 'Save Settings'}
-        </button>
+        <div>
+          <button className="btn-primary" type="submit" style={{ padding: '12px 26px' }}
+            disabled={updateMutation.isPending}>
+            {updateMutation.isPending ? 'Saving…' : 'Save settings'}
+          </button>
+        </div>
       </form>
 
+      <hr className="divider" />
+
       {/* Status toggle */}
-      <div className="card" style={{ padding: 24, marginBottom: 20 }}>
-        <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 600, color: '#e2e8f0' }}>Project Status</h3>
-        <p style={{ margin: '0 0 16px', fontSize: 14, color: '#64748b' }}>
-          Pausing hides your waitlist page from the public.
-        </p>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className={project?.status === 'active' ? 'btn-primary' : 'btn-secondary'}
-            onClick={() => statusMutation.mutate('active')} style={{ padding: '8px 18px' }}>
+      <SectionCard
+        icon={<Power size={18} />}
+        title="Project status"
+        subtitle="Pausing hides your public waitlist page from new visitors."
+      >
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button type="button" className={project?.status === 'active' ? 'btn-primary' : 'btn-secondary'}
+            onClick={() => statusMutation.mutate('active')} disabled={statusMutation.isPending}
+            style={{ padding: '9px 20px' }}>
             Active
           </button>
-          <button className={project?.status === 'paused' ? 'btn-primary' : 'btn-secondary'}
-            onClick={() => statusMutation.mutate('paused')} style={{ padding: '8px 18px' }}>
+          <button type="button" className={project?.status === 'paused' ? 'btn-primary' : 'btn-secondary'}
+            onClick={() => statusMutation.mutate('paused')} disabled={statusMutation.isPending}
+            style={{ padding: '9px 20px' }}>
             Paused
           </button>
         </div>
-      </div>
+      </SectionCard>
+
+      <div style={{ height: 20 }} />
 
       {/* Danger zone / Recovery zone */}
       {project?.status === 'pending_deletion' ? (
-        <div style={{ padding: 24, border: '1px solid rgba(16,185,129,0.25)', borderRadius: 16, background: 'rgba(16,185,129,0.05)' }}>
+        <section style={{ padding: 24, border: '1px solid rgba(74,222,128,0.28)', borderRadius: 'var(--radius-lg)', background: 'rgba(74,222,128,0.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <AlertTriangle size={16} color="#10b981" />
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#10b981' }}>Recovery Available</h3>
+            <RefreshCw size={17} color="#4ade80" />
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#4ade80' }}>Recovery available</h3>
           </div>
-          <p style={{ margin: '0 0 16px', fontSize: 14, color: '#64748b', lineHeight: 1.5 }}>
-            This project is scheduled for permanent deletion on {new Date(project.scheduled_deletion_at).toLocaleDateString()}.
-            You can restore it to full functionality immediately.
+          <p style={{ margin: '0 0 18px', fontSize: 14, color: 'var(--ink-muted)', lineHeight: 1.55 }}>
+            This project is scheduled for permanent deletion on{' '}
+            <strong style={{ color: 'var(--ink-soft)' }}>{new Date(project.scheduled_deletion_at).toLocaleDateString()}</strong>.
+            You can restore it to full functionality right now.
           </p>
-          <button className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#10b981' }}
+          <button type="button" className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#4ade80', color: '#0e0c12' }}
             onClick={() => recoverMutation.mutate()} disabled={recoverMutation.isPending}>
-            <RefreshCw size={14} /> Restore Project
+            <RefreshCw size={15} /> {recoverMutation.isPending ? 'Restoring…' : 'Restore project'}
           </button>
-        </div>
+        </section>
       ) : (
-        <div style={{ padding: 24, border: '1px solid rgba(239,68,68,0.25)', borderRadius: 16, background: 'rgba(239,68,68,0.05)' }}>
+        <section style={{ padding: 24, border: '1px solid rgba(248,113,113,0.28)', borderRadius: 'var(--radius-lg)', background: 'rgba(248,113,113,0.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <AlertTriangle size={16} color="#f87171" />
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#f87171' }}>Danger Zone</h3>
+            <AlertTriangle size={17} color="#f87171" />
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#f87171' }}>Danger zone</h3>
           </div>
-          <p style={{ margin: '0 0 16px', fontSize: 14, color: '#64748b' }}>
-            Schedule this project and all its subscribers for deletion. It will be held in recovery for 14 days before being permanently destroyed.
+          <p style={{ margin: '0 0 18px', fontSize: 14, color: 'var(--ink-muted)', lineHeight: 1.55 }}>
+            Schedule this project and all of its subscribers for deletion. It stays recoverable for 14 days before being permanently destroyed.
           </p>
-          <button className="btn-danger" style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          <button type="button" className="btn-danger" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
             onClick={() => { setDeleteModal(true); setDeletePassword(''); }}>
-            <Trash2 size={14} /> Delete Project
+            <Trash2 size={15} /> Delete project
           </button>
-        </div>
+        </section>
       )}
 
       {/* Delete Confirmation Modal */}
       {deleteModal && (
-        <>
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 999, backdropFilter: 'blur(3px)' }} onClick={() => setDeleteModal(false)} />
-          <div className="card" style={{
+        <div role="dialog" aria-modal="true" aria-label="Confirm project deletion">
+          <div
+            onClick={() => setDeleteModal(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 999, backdropFilter: 'blur(4px)' }}
+          />
+          <div className="card fade-in-up" style={{
             position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-            width: 400, zIndex: 1000, padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+            width: 'min(420px, calc(100vw - 32px))', zIndex: 1000, padding: 26, boxShadow: '0 24px 50px rgba(0,0,0,0.55)',
           }}>
-            <h3 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 600, color: '#e2e8f0' }}>Confirm Deletion</h3>
-            <p style={{ margin: '0 0 24px', fontSize: 14, color: '#94a3b8', lineHeight: 1.5 }}>
-              Enter your account password to confirm project scheduling for deletion.
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <span className="icon-tile" style={{ width: 36, height: 36, color: '#f87171', background: 'rgba(248,113,113,0.12)' }}>
+                <AlertTriangle size={17} />
+              </span>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--ink)' }}>Confirm deletion</h3>
+            </div>
+            <p style={{ margin: '0 0 22px', fontSize: 14, color: 'var(--ink-soft)', lineHeight: 1.55 }}>
+              Enter your account password to schedule this project for deletion. This can be undone within the recovery window.
             </p>
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: '#94a3b8', marginBottom: 6 }}>
-                <Lock size={12} /> Password
+            <div style={{ marginBottom: 22 }}>
+              <label htmlFor="del-pw" className="field-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Lock size={13} /> Account password
               </label>
-              <input type="password" placeholder="Account Password" style={{ width: '100%' }} className="input" 
+              <input id="del-pw" type="password" placeholder="••••••••" style={{ width: '100%' }} className="input"
+                autoFocus
                 value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} />
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button className="btn-secondary" onClick={() => setDeleteModal(false)} style={{ padding: '8px 16px' }}>Cancel</button>
-              <button className="btn-danger" onClick={() => deleteMutation.mutate(deletePassword)} disabled={!deletePassword || deleteMutation.isPending} style={{ padding: '8px 16px' }}>
-                Secure Delete
+              <button type="button" className="btn-secondary" onClick={() => setDeleteModal(false)} style={{ padding: '9px 18px' }}>Cancel</button>
+              <button type="button" className="btn-danger" onClick={() => deleteMutation.mutate(deletePassword)}
+                disabled={!deletePassword || deleteMutation.isPending} style={{ padding: '9px 18px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Trash2 size={15} /> {deleteMutation.isPending ? 'Deleting…' : 'Secure delete'}
               </button>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   )

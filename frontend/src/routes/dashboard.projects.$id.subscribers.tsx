@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { subscribersApi } from '@/lib/api'
 import React, { useState } from 'react'
-import { Search, Download, Trash2, UserX, UserCheck, ChevronLeft, ChevronRight, ChevronDown, XCircle } from 'lucide-react'
+import { Search, Download, Trash2, UserX, UserCheck, ChevronLeft, ChevronRight, ChevronDown, XCircle, Users, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatDate } from '@/lib/utils'
 
@@ -20,7 +20,7 @@ function SubscribersPage() {
   const [countryFilter, setCountryFilter] = useState('')
   const [selected, setSelected] = useState<string[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
-  const [confirmModal, setConfirmModal] = useState<{ title: string, content: string, onConfirm: () => void } | null>(null)
+  const [confirmModal, setConfirmModal] = useState<{ title: string, content: string, danger?: boolean, onConfirm: () => void } | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['subscribers', id, page, search, statusFilter, countryFilter],
@@ -64,89 +64,131 @@ function SubscribersPage() {
     })
   }
 
+  const hasFilters = !!(search || statusFilter || countryFilter)
+
   return (
-    <div>
-      {/* Toolbar */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 20, flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-          <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-          <input className="input" placeholder="Search by email or name..."
-            value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
-            style={{ paddingLeft: 36 }} />
+    <div className="fade-in" style={{ maxWidth: 1240, margin: '0 auto' }}>
+      {/* Page header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.02em' }}>
+            Subscribers
+          </h1>
+          <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--ink-muted)' }}>
+            Everyone on your waitlist — search, filter, and manage signups{!isLoading && total > 0 ? ` (${total.toLocaleString()} total)` : ''}.
+          </p>
         </div>
-
-        <select className="input" style={{ width: 'auto' }}
-          value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1) }}>
-          <option value="">All Status</option>
-          <option value="active">Active</option>
-          <option value="unsubscribed">Unsubscribed</option>
-        </select>
-
-        <input className="input" placeholder="Country (US, IN...)" style={{ width: 80 }}
-          value={countryFilter} onChange={e => { setCountryFilter(e.target.value.toUpperCase()); setPage(1) }} />
-
         <a
           href={subscribersApi.export(id)}
           download
           className="btn-secondary"
-          style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
+          style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}
         >
-          <Download size={14} /> Export CSV
+          <Download size={15} /> Export CSV
         </a>
+      </div>
+
+      {/* Toolbar */}
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+          <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-muted)', pointerEvents: 'none' }} />
+          <input
+            className="input"
+            aria-label="Search subscribers"
+            placeholder="Search by email or name..."
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1) }}
+            style={{ paddingLeft: 40 }}
+          />
+        </div>
+
+        <select
+          className="input"
+          aria-label="Filter by status"
+          style={{ width: 'auto', minWidth: 140 }}
+          value={statusFilter}
+          onChange={e => { setStatusFilter(e.target.value); setPage(1) }}
+        >
+          <option value="">All statuses</option>
+          <option value="active">Active</option>
+          <option value="unsubscribed">Unsubscribed</option>
+        </select>
+
+        <input
+          className="input"
+          aria-label="Filter by country code"
+          placeholder="Country"
+          style={{ width: 110 }}
+          value={countryFilter}
+          onChange={e => { setCountryFilter(e.target.value.toUpperCase()); setPage(1) }}
+        />
       </div>
 
       {/* Bulk actions */}
       {selected.length > 0 && (
-        <div style={{
-          display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16,
-          padding: '12px 16px', background: 'rgba(99,102,241,0.1)',
-          border: '1px solid rgba(99,102,241,0.2)', borderRadius: 10,
-        }}>
-          <span style={{ fontSize: 14, color: '#818cf8', marginRight: 8 }}>
+        <div
+          className="fade-in"
+          style={{
+            display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap',
+            padding: '12px 16px',
+            background: 'rgba(192,132,252,0.1)',
+            border: '1px solid rgba(192,132,252,0.22)',
+            borderRadius: 'var(--radius-md)',
+          }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#d8b4fe', marginRight: 4 }}>
             {selected.length} selected
           </span>
-          <button className="btn-secondary" style={{ padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 5 }}
+          <button className="btn-secondary" style={{ padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
             onClick={() => handleBulk('unsubscribe')}>
-            <UserX size={13} /> Unsubscribe
+            <UserX size={14} /> Unsubscribe
           </button>
-          <button className="btn-secondary" style={{ padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 5 }}
+          <button className="btn-secondary" style={{ padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
             onClick={() => handleBulk('resubscribe')}>
-            <UserCheck size={13} /> Resubscribe
+            <UserCheck size={14} /> Resubscribe
           </button>
-          <button className="btn-danger" style={{ padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 5 }}
+          <div style={{ flex: 1 }} />
+          <button className="btn-danger" style={{ padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
             onClick={() => {
               if (selected.length === 0) { toast.error('Select subscribers first'); return }
               setConfirmModal({
                 title: 'Delete Subscribers',
                 content: `Are you sure you want to delete ${selected.length} subscribers?`,
+                danger: true,
                 onConfirm: () => { handleBulk('delete'); setConfirmModal(null); }
               })
             }}>
-            <Trash2 size={13} /> Delete
+            <Trash2 size={14} /> Delete
           </button>
-          <button className="btn-danger" style={{ padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(239, 68, 68, 0.2)' }}
+          <button className="btn-danger" style={{ padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(239, 68, 68, 0.2)' }}
             onClick={() => {
               if (selected.length === 0) { toast.error('Select subscribers first'); return }
               setConfirmModal({
                 title: 'Permanently Delete Subscribers',
                 content: `Are you sure you want to completely erase ${selected.length} subscribers? This action cannot be undone.`,
+                danger: true,
                 onConfirm: () => { handleBulk('delete_permanent'); setConfirmModal(null); }
               })
             }}>
-            <XCircle size={13} /> Delete Permanently
+            <XCircle size={14} /> Delete Permanently
           </button>
         </div>
       )}
 
       {/* Table */}
-      <div className="card" style={{ overflow: 'hidden' }}>
+      <div className="card" style={{ overflow: 'hidden', padding: 0 }}>
         <div style={{ overflowX: 'auto' }}>
-          <table className="data-table">
+          <table className="data-table" style={{ minWidth: 880 }}>
             <thead>
               <tr>
                 <th style={{ width: 40 }}>
-                  <input type="checkbox" checked={selected.length === subscribers.length && subscribers.length > 0}
-                    onChange={selectAll} style={{ cursor: 'pointer' }} />
+                  <input
+                    type="checkbox"
+                    aria-label="Select all subscribers"
+                    checked={selected.length === subscribers.length && subscribers.length > 0}
+                    onChange={selectAll}
+                    style={{ cursor: 'pointer', accentColor: '#c084fc' }}
+                  />
                 </th>
                 <th>Name</th>
                 <th>Email</th>
@@ -162,23 +204,64 @@ function SubscribersPage() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={11} style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>Loading...</td></tr>
+                Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={i}>
+                    <td><div className="skeleton" style={{ width: 16, height: 16, borderRadius: 4 }} /></td>
+                    {Array.from({ length: 9 }).map((__, j) => (
+                      <td key={j}><div className="skeleton" style={{ width: j === 1 ? 140 : 70, height: 14, borderRadius: 6 }} /></td>
+                    ))}
+                    <td><div className="skeleton" style={{ width: 40, height: 14, borderRadius: 6 }} /></td>
+                  </tr>
+                ))
               ) : subscribers.length === 0 ? (
-                <tr><td colSpan={11} style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>No subscribers found</td></tr>
+                <tr>
+                  <td colSpan={11} style={{ padding: 0 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '64px 24px', gap: 16 }}>
+                      <div className="icon-tile" style={{ width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-lg)', background: 'rgba(192,132,252,0.1)', border: '1px solid rgba(192,132,252,0.2)' }}>
+                        <Users size={26} color="#d8b4fe" />
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--ink)' }}>
+                          {hasFilters ? 'No matching subscribers' : 'No subscribers yet'}
+                        </p>
+                        <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--ink-muted)', maxWidth: 360 }}>
+                          {hasFilters
+                            ? 'Try adjusting your search or filters to find who you’re looking for.'
+                            : 'Once people join your waitlist, they’ll show up right here.'}
+                        </p>
+                      </div>
+                      {hasFilters && (
+                        <button
+                          className="btn-secondary"
+                          style={{ padding: '8px 16px' }}
+                          onClick={() => { setSearch(''); setStatusFilter(''); setCountryFilter(''); setPage(1) }}
+                        >
+                          Clear filters
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
               ) : subscribers.map((s: any) => (
                 <React.Fragment key={s.id}>
                 <tr>
                   <td>
-                    <input type="checkbox" checked={selected.includes(s.id)} onChange={() => toggleSelect(s.id)} style={{ cursor: 'pointer' }} />
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${s.email}`}
+                      checked={selected.includes(s.id)}
+                      onChange={() => toggleSelect(s.id)}
+                      style={{ cursor: 'pointer', accentColor: '#c084fc' }}
+                    />
                   </td>
-                  <td style={{ color: '#e2e8f0', fontWeight: 500, cursor: 'pointer' }}
-                    onClick={() => setExpanded(expanded === s.id ? null : s.id)}>
+                  <td style={{ color: 'var(--ink)', fontWeight: 500, cursor: s.custom_data ? 'pointer' : 'default' }}
+                    onClick={() => s.custom_data && setExpanded(expanded === s.id ? null : s.id)}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      {s.custom_data && <ChevronDown size={12} color="#475569" style={{ transform: expanded === s.id ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />}
+                      {s.custom_data && <ChevronDown size={13} color="var(--ink-faint)" style={{ transform: expanded === s.id ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }} />}
                       {s.name || '—'}
                     </div>
                   </td>
-                  <td style={{ color: '#94a3b8' }}>{s.email}</td>
+                  <td style={{ color: 'var(--ink-soft)' }}>{s.email}</td>
                   <td>
                     <span className={`badge ${s.status === 'active' ? 'badge-green' : s.status === 'deleted' ? 'badge-red' : 'badge-gray'}`}>
                       {s.status}
@@ -186,58 +269,65 @@ function SubscribersPage() {
                   </td>
                   <td style={{ fontSize: 13 }}>
                     {s.promo_used ? (
-                      <span style={{
-                        padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                        background: 'rgba(250,204,21,0.1)', color: '#facc15', border: '1px solid rgba(250,204,21,0.2)',
-                      }}>{s.promo_used}</span>
-                    ) : <span style={{ color: '#334155' }}>—</span>}
+                      <span className="badge badge-yellow">{s.promo_used}</span>
+                    ) : <span style={{ color: 'var(--ink-dim)' }}>—</span>}
                   </td>
                   <td style={{ fontSize: 13 }}>
                     {s.coupon_code ? (
-                      <div>
-                        <code style={{ fontSize: 11, color: '#94a3b8' }}>{s.coupon_code}</code>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <code style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{s.coupon_code}</code>
                         <span className={`badge ${s.coupon_status === 'used' ? 'badge-green' : s.coupon_status === 'revoked' ? 'badge-red' : 'badge-gray'}`}
-                          style={{ marginLeft: 4, fontSize: 10 }}>
+                          style={{ fontSize: 10 }}>
                           {s.coupon_status}
                         </span>
                       </div>
-                    ) : <span style={{ color: '#334155' }}>—</span>}
+                    ) : <span style={{ color: 'var(--ink-dim)' }}>—</span>}
                   </td>
                   <td>
                     <span className="badge badge-purple">{s.source}</span>
                   </td>
-                  <td style={{ fontSize: 12, color: '#475569', fontFamily: 'monospace' }}>
+                  <td style={{ fontSize: 12, color: 'var(--ink-faint)', fontFamily: 'monospace' }}>
                     {s.ip_address || '—'}
                   </td>
                   <td style={{ fontSize: 13 }}>
                     {s.country ? (
-                      <span style={{ color: '#94a3b8' }}>{s.country}</span>
-                    ) : <span style={{ color: '#334155' }}>—</span>}
+                      <span style={{ color: 'var(--ink-soft)' }}>{s.country}</span>
+                    ) : <span style={{ color: 'var(--ink-dim)' }}>—</span>}
                   </td>
-                  <td style={{ color: '#64748b', fontSize: 13 }}>{formatDate(s.created_at)}</td>
-                  <td style={{ display: 'flex', gap: 4 }}>
-                    <button
-                      onClick={() => setConfirmModal({
-                        title: 'Delete Subscriber',
-                        content: 'Are you sure you want to delete this subscriber?',
-                        onConfirm: () => { deleteMutation.mutate(s.id); setConfirmModal(null); }
-                      })}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', padding: 4 }}
-                      title="Delete"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                    <button
-                      onClick={() => setConfirmModal({
-                        title: 'Permanently Delete',
-                        content: 'Are you sure you want to permanently erase this subscriber? This cannot be undone.',
-                        onConfirm: () => { deletePermanentMutation.mutate(s.id); setConfirmModal(null); }
-                      })}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 4 }}
-                      title="Permanently Delete"
-                    >
-                      <XCircle size={14} />
-                    </button>
+                  <td style={{ color: 'var(--ink-muted)', fontSize: 13, whiteSpace: 'nowrap' }}>{formatDate(s.created_at)}</td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 2 }}>
+                      <button
+                        aria-label="Delete subscriber"
+                        onClick={() => setConfirmModal({
+                          title: 'Delete Subscriber',
+                          content: 'Are you sure you want to delete this subscriber?',
+                          danger: true,
+                          onConfirm: () => { deleteMutation.mutate(s.id); setConfirmModal(null); }
+                        })}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-faint)', padding: 6, borderRadius: 8, transition: 'color .15s, background .15s', display: 'inline-flex' }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.background = 'rgba(239,68,68,0.1)' }}
+                        onMouseLeave={e => { e.currentTarget.style.color = 'var(--ink-faint)'; e.currentTarget.style.background = 'none' }}
+                        title="Delete"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                      <button
+                        aria-label="Permanently delete subscriber"
+                        onClick={() => setConfirmModal({
+                          title: 'Permanently Delete',
+                          content: 'Are you sure you want to permanently erase this subscriber? This cannot be undone.',
+                          danger: true,
+                          onConfirm: () => { deletePermanentMutation.mutate(s.id); setConfirmModal(null); }
+                        })}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 6, borderRadius: 8, transition: 'background .15s', display: 'inline-flex' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+                        title="Permanently Delete"
+                      >
+                        <XCircle size={15} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
                 {expanded === s.id && s.custom_data && (() => {
@@ -247,12 +337,12 @@ function SubscribersPage() {
                     if (entries.length === 0) return null
                     return (
                       <tr>
-                        <td colSpan={11} style={{ padding: '8px 16px 12px 48px', background: 'rgba(99,102,241,0.03)' }}>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px' }}>
+                        <td colSpan={11} style={{ padding: '10px 16px 14px 48px', background: 'rgba(192,132,252,0.04)' }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 24px' }}>
                             {entries.map(([k, v]) => (
                               <div key={k} style={{ fontSize: 12 }}>
-                                <span style={{ color: '#475569', fontWeight: 500 }}>{k}:</span>{' '}
-                                <span style={{ color: '#94a3b8' }}>{String(v)}</span>
+                                <span style={{ color: 'var(--ink-faint)', fontWeight: 500 }}>{k}:</span>{' '}
+                                <span style={{ color: 'var(--ink-soft)' }}>{String(v)}</span>
                               </div>
                             ))}
                           </div>
@@ -270,19 +360,19 @@ function SubscribersPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
             padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)',
           }}>
-            <span style={{ fontSize: 13, color: '#64748b' }}>{total} subscribers total</span>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button className="btn-secondary" style={{ padding: '6px 12px' }}
+            <span style={{ fontSize: 13, color: 'var(--ink-muted)' }}>{total.toLocaleString()} subscribers total</span>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <button className="btn-secondary" aria-label="Previous page" style={{ padding: '6px 12px', display: 'inline-flex' }}
                 onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
-                <ChevronLeft size={14} />
+                <ChevronLeft size={15} />
               </button>
-              <span style={{ fontSize: 14, color: '#94a3b8' }}>{page} / {totalPages}</span>
-              <button className="btn-secondary" style={{ padding: '6px 12px' }}
+              <span style={{ fontSize: 14, color: 'var(--ink-soft)', minWidth: 64, textAlign: 'center' }}>{page} / {totalPages}</span>
+              <button className="btn-secondary" aria-label="Next page" style={{ padding: '6px 12px', display: 'inline-flex' }}
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
-                <ChevronRight size={14} />
+                <ChevronRight size={15} />
               </button>
             </div>
           </div>
@@ -292,12 +382,19 @@ function SubscribersPage() {
       {confirmModal && (
         <>
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 999, backdropFilter: 'blur(3px)' }} onClick={() => setConfirmModal(null)} />
-          <div className="card" style={{
+          <div className="card fade-in" style={{
             position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-            width: 400, zIndex: 1000, padding: 24, paddingBottom: 20, boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+            width: 'min(420px, calc(100vw - 32px))', zIndex: 1000, padding: 24, boxShadow: '0 24px 48px rgba(0,0,0,0.55)'
           }}>
-            <h3 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 600, color: '#e2e8f0' }}>{confirmModal.title}</h3>
-            <p style={{ margin: '0 0 24px', fontSize: 14, color: '#94a3b8', lineHeight: 1.5 }}>{confirmModal.content}</p>
+            <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: 20 }}>
+              <div style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                <AlertTriangle size={20} color="#f87171" />
+              </div>
+              <div>
+                <h3 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 600, color: 'var(--ink)' }}>{confirmModal.title}</h3>
+                <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-soft)', lineHeight: 1.5 }}>{confirmModal.content}</p>
+              </div>
+            </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button className="btn-secondary" onClick={() => setConfirmModal(null)} style={{ padding: '8px 16px' }}>Cancel</button>
               <button className="btn-danger" onClick={confirmModal.onConfirm} style={{ padding: '8px 16px' }}>Confirm</button>
