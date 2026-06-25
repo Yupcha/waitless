@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Book, Terminal, Code2, Key, Globe, Copy, Check, Menu, X, ArrowLeft, ArrowUpRight, Info, AlertTriangle } from 'lucide-react'
 
 export const Route = createFileRoute('/docs')({
@@ -22,10 +22,13 @@ const sections = [
 
 function CodeBlock({ children, label }: { children: string; label?: string }) {
   const [copied, setCopied] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  useEffect(() => () => clearTimeout(timer.current), [])
   const copy = () => {
     navigator.clipboard.writeText(children.trim())
     setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => setCopied(false), 2000)
   }
   return (
     <div className="docs-code" style={{ position: 'relative', marginBottom: 18 }}>
