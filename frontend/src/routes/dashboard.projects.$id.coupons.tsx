@@ -3,7 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import api from '@/lib/api'
 import toast from 'react-hot-toast'
-import { Gift, Search, Ban, Copy, Check, Plus, Pencil, Trash2, Tag } from 'lucide-react'
+import {
+  Gift, Search, Ban, Copy, Check, Plus, Pencil, Trash2, Tag,
+  X, Ticket, CheckCircle2, Megaphone, AlertCircle, Inbox,
+} from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
 export const Route = createFileRoute('/dashboard/projects/$id/coupons')({
@@ -29,7 +32,7 @@ function CouponsPage() {
   }
   const [form, setForm] = useState(defaultForm)
 
-  const { data } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['campaigns', id],
     queryFn: () => api.get(`/dashboard/projects/${id}/campaigns`).then(r => r.data),
   })
@@ -56,7 +59,7 @@ function CouponsPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['campaigns', id] }); toast.success('Campaign deleted') },
   })
 
-  const { data: codesData } = useQuery({
+  const { data: codesData, isLoading: codesLoading } = useQuery({
     queryKey: ['coupons', id, search, statusFilter, campaignFilter],
     queryFn: () => api.get(`/dashboard/projects/${id}/coupons`, {
       params: { search, status: statusFilter, campaign_id: campaignFilter, limit: 50 },
@@ -92,215 +95,229 @@ function CouponsPage() {
     setShowForm(true)
   }
 
-  return (
-    <div>
-      {/* Stats */}
-      <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 28 }}>
-        {[
-          { label: 'Total Codes', value: totalCodes, color: '99,102,241' },
-          { label: 'Active', value: activeCodes, color: '34,197,94' },
-          { label: 'Used', value: usedCodes, color: '251,191,36' },
-          { label: 'Campaigns', value: campaigns.length, color: '168,85,247' },
-        ].map((s, i) => (
-          <div key={i} className="stat-card">
-            <span style={{ fontSize: 13, color: '#475569', fontWeight: 500 }}>{s.label}</span>
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#e2e8f0', marginTop: 8 }}>{s.value}</div>
-          </div>
-        ))}
-      </div>
+  const closeForm = () => { setShowForm(false); setEditId(null); setForm(defaultForm) }
 
-      {/* Campaigns */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: 8,
-            background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.15)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <Gift size={15} color="#818cf8" />
-          </div>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#e2e8f0' }}>Promo Campaigns</h3>
+  const stats = [
+    { label: 'Total codes', value: totalCodes, icon: Ticket, color: '#c084fc' },
+    { label: 'Active', value: activeCodes, icon: CheckCircle2, color: '#4ade80' },
+    { label: 'Redeemed', value: usedCodes, icon: Gift, color: '#facc15' },
+    { label: 'Campaigns', value: campaigns.length, icon: Megaphone, color: '#818cf8' },
+  ]
+
+  return (
+    <div style={{ maxWidth: 1100 }}>
+      {/* Page header */}
+      <div
+        className="fade-in"
+        style={{
+          display: 'flex', flexWrap: 'wrap', gap: 16,
+          alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28,
+        }}
+      >
+        <div>
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: 'var(--ink)', letterSpacing: '-0.02em' }}>
+            Coupons & Promos
+          </h1>
+          <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--ink-muted)', lineHeight: 1.5, maxWidth: 560 }}>
+            Spin up promo campaigns and subscribers automatically receive a unique discount code when they join.
+          </p>
         </div>
-        <button className="btn-primary" style={{ padding: '7px 16px', fontSize: 13 }}
-          onClick={() => { setShowForm(true); setEditId(null); setForm(defaultForm) }}>
-          <Plus size={14} /> New Campaign
+        <button
+          className="btn-primary"
+          onClick={() => { setShowForm(true); setEditId(null); setForm(defaultForm) }}
+        >
+          <Plus size={16} /> New campaign
         </button>
       </div>
 
-      {/* Campaign form modal */}
-      {showForm && (
-        <div className="card" style={{ padding: 24, marginBottom: 20 }}>
-          <h4 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#e2e8f0' }}>
-            {editId ? 'Edit Campaign' : 'New Campaign'}
-          </h4>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#94a3b8', marginBottom: 6 }}>Promo Code (trigger)</label>
-              <input className="input" placeholder="e.g. get5, promo6" value={form.promo_code}
-                onChange={e => setForm(f => ({ ...f, promo_code: e.target.value.toLowerCase() }))} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#94a3b8', marginBottom: 6 }}>Discount Type</label>
-              <select className="input" value={form.discount_type}
-                onChange={e => setForm(f => ({ ...f, discount_type: e.target.value }))}>
-                <option value="flat">Flat Amount</option>
-                <option value="percent">Percentage</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#94a3b8', marginBottom: 6 }}>
-                Value {form.discount_type === 'percent' ? '(%)' : `(${form.currency})`}
-              </label>
-              <input className="input" type="number" step="0.01" value={form.discount_value}
-                onChange={e => setForm(f => ({ ...f, discount_value: +e.target.value }))} />
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#94a3b8', marginBottom: 6 }}>Code Prefix</label>
-              <input className="input" placeholder="EARLY" value={form.code_prefix}
-                onChange={e => setForm(f => ({ ...f, code_prefix: e.target.value.toUpperCase() }))} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#94a3b8', marginBottom: 6 }}>Code Length</label>
-              <input className="input" type="number" min={6} max={16} value={form.code_length}
-                onChange={e => setForm(f => ({ ...f, code_length: +e.target.value }))} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#94a3b8', marginBottom: 6 }}>Max Codes (0=∞)</label>
-              <input className="input" type="number" min={0} value={form.max_codes}
-                onChange={e => setForm(f => ({ ...f, max_codes: +e.target.value }))} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#94a3b8', marginBottom: 6 }}>Valid Days (0=∞)</label>
-              <input className="input" type="number" min={0} value={form.valid_days}
-                onChange={e => setForm(f => ({ ...f, valid_days: +e.target.value }))} />
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#94a3b8', marginBottom: 6 }}>Currency</label>
-              <input className="input" value={form.currency}
-                onChange={e => setForm(f => ({ ...f, currency: e.target.value.toUpperCase() }))} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#94a3b8', marginBottom: 6 }}>Delivery Method</label>
-              <select className="input" value={form.delivery_method}
-                onChange={e => setForm(f => ({ ...f, delivery_method: e.target.value }))}>
-                <option value="api">API Response</option>
-                <option value="email">Email Only</option>
-                <option value="none">None (Admin view only)</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#94a3b8', marginBottom: 6 }}>Description</label>
-              <input className="input" placeholder="Early bird 50% off" value={form.description}
-                onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 16 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-              <input type="checkbox" checked={form.enabled}
-                onChange={e => setForm(f => ({ ...f, enabled: e.target.checked }))} />
-              <span style={{ fontSize: 13, color: '#94a3b8' }}>Enabled</span>
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-              <input type="checkbox" checked={form.is_default}
-                onChange={e => setForm(f => ({ ...f, is_default: e.target.checked }))} />
-              <span style={{ fontSize: 13, color: '#94a3b8' }}>Default (used when no promo code)</span>
-            </label>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn-primary" style={{ padding: '8px 20px', fontSize: 13 }}
-              onClick={() => editId ? updateMut.mutate() : createMut.mutate()}
-              disabled={createMut.isPending || updateMut.isPending}>
-              {editId ? 'Update' : 'Create'}
-            </button>
-            <button className="btn-secondary" style={{ padding: '8px 20px', fontSize: 13 }}
-              onClick={() => { setShowForm(false); setEditId(null); setForm(defaultForm) }}>Cancel</button>
-          </div>
+      {/* Stats */}
+      <div
+        className="stagger"
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 32 }}
+      >
+        {isLoading
+          ? Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="stat-card">
+                <div className="skeleton" style={{ width: 70, height: 13, borderRadius: 6 }} />
+                <div className="skeleton" style={{ width: 48, height: 28, borderRadius: 8, marginTop: 12 }} />
+              </div>
+            ))
+          : stats.map((s, i) => (
+              <div key={i} className="stat-card">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ fontSize: 13, color: 'var(--ink-faint)', fontWeight: 500 }}>{s.label}</span>
+                  <span
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      width: 30, height: 30, borderRadius: 9,
+                      background: `${s.color}1a`, border: `1px solid ${s.color}33`,
+                    }}
+                  >
+                    <s.icon size={15} color={s.color} />
+                  </span>
+                </div>
+                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--ink)', marginTop: 10 }}>{s.value}</div>
+              </div>
+            ))}
+      </div>
+
+      {/* Campaigns section header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <span className="icon-tile" style={{ width: 34, height: 34, borderRadius: 10 }}>
+          <Megaphone size={16} />
+        </span>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>Promo campaigns</h2>
+          <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--ink-faint)' }}>
+            Define the discount, the trigger code, and how it&apos;s delivered.
+          </p>
         </div>
-      )}
+      </div>
 
       {/* Campaign list */}
-      {campaigns.length > 0 && (
-        <div className="card" style={{ overflow: 'hidden', marginBottom: 28 }}>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Promo Code</th>
-                <th>Discount</th>
-                <th>Codes Issued</th>
-                <th>Status</th>
-                <th style={{ width: 80 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {campaigns.map((c: any) => (
-                <tr key={c.id}>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Tag size={12} color="#818cf8" />
-                      <code style={{ fontSize: 13, color: '#818cf8', fontWeight: 600 }}>
-                        {c.promo_code || '(default)'}
-                      </code>
-                      {c.is_default && (
-                        <span style={{ fontSize: 10, background: 'rgba(99,102,241,0.15)', color: '#818cf8', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>DEFAULT</span>
-                      )}
-                    </div>
-                    {c.description && <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>{c.description}</div>}
-                  </td>
-                  <td style={{ color: '#e2e8f0', fontSize: 13 }}>
-                    {c.discount_type === 'percent' ? `${c.discount_value}%` : `${c.currency} ${c.discount_value}`}
-                  </td>
-                  <td style={{ color: '#94a3b8', fontSize: 13 }}>{c.codes_issued}</td>
-                  <td>
-                    <span className={`badge ${c.enabled ? 'badge-green' : 'badge-gray'}`}>
-                      {c.enabled ? 'active' : 'disabled'}
-                    </span>
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => openEdit(c)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: 4 }}>
-                        <Pencil size={13} />
-                      </button>
-                      <button onClick={() => setConfirmModal({
-                          title: 'Delete Campaign',
-                          content: 'Are you sure you want to delete this campaign?',
-                          onConfirm: () => { deleteMut.mutate(c.id); setConfirmModal(null); }
-                        })}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f87171', padding: 4 }}>
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </td>
+      {isError ? (
+        <div className="card" style={{ padding: 40, textAlign: 'center', marginBottom: 32 }}>
+          <AlertCircle size={28} color="#f87171" style={{ margin: '0 auto 10px' }} />
+          <p style={{ margin: 0, color: 'var(--ink-soft)', fontWeight: 600 }}>Couldn&apos;t load campaigns</p>
+          <p style={{ margin: '4px 0 0', color: 'var(--ink-faint)', fontSize: 13 }}>Please refresh the page to try again.</p>
+        </div>
+      ) : isLoading ? (
+        <div className="card" style={{ padding: 20, marginBottom: 32 }}>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="skeleton" style={{ height: 44, borderRadius: 10, marginBottom: i < 2 ? 12 : 0 }} />
+          ))}
+        </div>
+      ) : campaigns.length === 0 ? (
+        <div className="card" style={{ padding: '44px 24px', textAlign: 'center', marginBottom: 32 }}>
+          <span className="icon-tile" style={{ width: 52, height: 52, margin: '0 auto 14px' }}>
+            <Megaphone size={22} />
+          </span>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>No campaigns yet</p>
+          <p style={{ margin: '6px auto 18px', fontSize: 13.5, color: 'var(--ink-muted)', maxWidth: 380, lineHeight: 1.5 }}>
+            Create your first promo campaign to start rewarding new subscribers with unique codes.
+          </p>
+          <button
+            className="btn-primary"
+            onClick={() => { setShowForm(true); setEditId(null); setForm(defaultForm) }}
+          >
+            <Plus size={16} /> New campaign
+          </button>
+        </div>
+      ) : (
+        <div className="card" style={{ overflow: 'hidden', marginBottom: 32 }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Promo code</th>
+                  <th>Discount</th>
+                  <th>Codes issued</th>
+                  <th>Status</th>
+                  <th style={{ width: 80, textAlign: 'right' }}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {campaigns.map((c: any) => (
+                  <tr key={c.id}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <Tag size={13} color="#818cf8" />
+                        <code style={{ fontSize: 13, color: '#818cf8', fontWeight: 600 }}>
+                          {c.promo_code || '(default)'}
+                        </code>
+                        {c.is_default && <span className="badge badge-purple">Default</span>}
+                      </div>
+                      {c.description && (
+                        <div style={{ fontSize: 12, color: 'var(--ink-faint)', marginTop: 3 }}>{c.description}</div>
+                      )}
+                    </td>
+                    <td style={{ color: 'var(--ink)', fontSize: 13, fontWeight: 600 }}>
+                      {c.discount_type === 'percent' ? `${c.discount_value}%` : `${c.currency} ${c.discount_value}`}
+                    </td>
+                    <td style={{ color: 'var(--ink-soft)', fontSize: 13 }}>{c.codes_issued}</td>
+                    <td>
+                      <span className={`badge ${c.enabled ? 'badge-green' : 'badge-gray'}`}>
+                        {c.enabled ? 'Active' : 'Disabled'}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                        <button
+                          className="icon-btn"
+                          aria-label="Edit campaign"
+                          onClick={() => openEdit(c)}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          className="icon-btn"
+                          aria-label="Delete campaign"
+                          style={{ color: '#f87171' }}
+                          onClick={() => setConfirmModal({
+                            title: 'Delete campaign',
+                            content: 'Are you sure you want to delete this campaign? This cannot be undone.',
+                            onConfirm: () => { deleteMut.mutate(c.id); setConfirmModal(null) },
+                          })}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
-      {/* Coupon codes */}
-      <h3 style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0', margin: '0 0 12px' }}>Coupon Codes</h3>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
-          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-          <input className="input" placeholder="Search code, email, promo..."
-            value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 34 }} />
+      {/* Coupon codes section */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <span className="icon-tile" style={{ width: 34, height: 34, borderRadius: 10 }}>
+          <Ticket size={16} />
+        </span>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>Coupon codes</h2>
+          <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--ink-faint)' }}>
+            Every code issued across your campaigns.
+          </p>
         </div>
-        <select className="input" style={{ width: 'auto' }} value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}>
-          <option value="">All Status</option>
+      </div>
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+          <Search size={15} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-muted)', pointerEvents: 'none' }} />
+          <input
+            className="input"
+            aria-label="Search coupon codes"
+            placeholder="Search code, email, promo..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ paddingLeft: 38 }}
+          />
+        </div>
+        <select
+          className="input"
+          aria-label="Filter by status"
+          style={{ width: 'auto', minWidth: 140 }}
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value)}
+        >
+          <option value="">All status</option>
           <option value="active">Active</option>
           <option value="used">Used</option>
           <option value="revoked">Revoked</option>
           <option value="expired">Expired</option>
         </select>
-        <select className="input" style={{ width: 'auto' }} value={campaignFilter}
-          onChange={e => setCampaignFilter(e.target.value)}>
-          <option value="">All Campaigns</option>
+        <select
+          className="input"
+          aria-label="Filter by campaign"
+          style={{ width: 'auto', minWidth: 140 }}
+          value={campaignFilter}
+          onChange={e => setCampaignFilter(e.target.value)}
+        >
+          <option value="">All campaigns</option>
           {campaigns.map((c: any) => (
             <option key={c.id} value={c.id}>{c.promo_code || '(default)'}</option>
           ))}
@@ -308,10 +325,25 @@ function CouponsPage() {
       </div>
 
       <div className="card" style={{ overflow: 'hidden' }}>
-        {coupons.length === 0 ? (
-          <div style={{ padding: 48, textAlign: 'center', color: '#475569' }}>
-            <Gift size={28} color="#334155" style={{ marginBottom: 8 }} />
-            <p style={{ margin: 0 }}>No coupon codes yet. Create a campaign and new subscribers will get codes automatically.</p>
+        {codesLoading ? (
+          <div style={{ padding: 20 }}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="skeleton" style={{ height: 40, borderRadius: 10, marginBottom: i < 4 ? 12 : 0 }} />
+            ))}
+          </div>
+        ) : coupons.length === 0 ? (
+          <div style={{ padding: '52px 24px', textAlign: 'center' }}>
+            <span className="icon-tile" style={{ width: 52, height: 52, margin: '0 auto 14px' }}>
+              <Inbox size={22} />
+            </span>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>
+              {search || statusFilter || campaignFilter ? 'No matching codes' : 'No coupon codes yet'}
+            </p>
+            <p style={{ margin: '6px auto 0', fontSize: 13.5, color: 'var(--ink-muted)', maxWidth: 400, lineHeight: 1.5 }}>
+              {search || statusFilter || campaignFilter
+                ? 'Try adjusting your search or filters.'
+                : 'Create a campaign and new subscribers will get codes automatically.'}
+            </p>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -325,7 +357,7 @@ function CouponsPage() {
                   <th>Discount</th>
                   <th>Expires</th>
                   <th>Created</th>
-                  <th style={{ width: 40 }}></th>
+                  <th style={{ width: 48, textAlign: 'right' }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -334,33 +366,40 @@ function CouponsPage() {
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <code style={{ fontSize: 13, color: '#818cf8', fontWeight: 600 }}>{c.code}</code>
-                        <button onClick={() => copyCode(c.code)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', padding: 2 }}>
-                          {copied === c.code ? <Check size={11} color="#4ade80" /> : <Copy size={11} />}
+                        <button
+                          aria-label="Copy code"
+                          onClick={() => copyCode(c.code)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-faint)', padding: 2, display: 'inline-flex' }}
+                        >
+                          {copied === c.code ? <Check size={12} color="#4ade80" /> : <Copy size={12} />}
                         </button>
                       </div>
                     </td>
                     <td>
                       {c.source_code ? (
-                        <code style={{ fontSize: 12, color: '#a78bfa', background: 'rgba(168,85,247,0.1)', padding: '2px 6px', borderRadius: 4 }}>{c.source_code}</code>
-                      ) : <span style={{ color: '#475569', fontSize: 12 }}>default</span>}
+                        <code style={{ fontSize: 12, color: '#f0abfc', background: 'rgba(168,85,247,0.1)', padding: '2px 6px', borderRadius: 5 }}>{c.source_code}</code>
+                      ) : <span style={{ color: 'var(--ink-faint)', fontSize: 12 }}>default</span>}
                     </td>
-                    <td style={{ color: '#94a3b8', fontSize: 13 }}>{c.subscriber?.email || '—'}</td>
+                    <td style={{ color: 'var(--ink-soft)', fontSize: 13 }}>{c.subscriber?.email || '—'}</td>
                     <td>
                       <span className={`badge ${c.status === 'active' ? 'badge-green' : c.status === 'used' ? 'badge-purple' : c.status === 'revoked' ? 'badge-red' : 'badge-gray'}`}>
                         {c.status}
                       </span>
                     </td>
-                    <td style={{ color: '#e2e8f0', fontSize: 13 }}>
+                    <td style={{ color: 'var(--ink)', fontSize: 13, fontWeight: 600 }}>
                       {c.discount_type === 'percent' ? `${c.discount_value}%` : `${c.currency} ${c.discount_value}`}
                     </td>
-                    <td style={{ color: '#64748b', fontSize: 13 }}>{c.expires_at ? formatDate(c.expires_at) : '∞'}</td>
-                    <td style={{ color: '#64748b', fontSize: 13 }}>{formatDate(c.created_at)}</td>
-                    <td>
+                    <td style={{ color: 'var(--ink-muted)', fontSize: 13 }}>{c.expires_at ? formatDate(c.expires_at) : '∞'}</td>
+                    <td style={{ color: 'var(--ink-muted)', fontSize: 13 }}>{formatDate(c.created_at)}</td>
+                    <td style={{ textAlign: 'right' }}>
                       {c.status === 'active' && (
-                        <button onClick={() => revokeMut.mutate(c.id)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f87171', padding: 4 }}>
-                          <Ban size={13} />
+                        <button
+                          className="icon-btn"
+                          aria-label="Revoke coupon"
+                          style={{ color: '#f87171' }}
+                          onClick={() => revokeMut.mutate(c.id)}
+                        >
+                          <Ban size={14} />
                         </button>
                       )}
                     </td>
@@ -372,19 +411,224 @@ function CouponsPage() {
         )}
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Campaign form modal */}
+      {showForm && (
+        <>
+          <div
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 999, backdropFilter: 'blur(3px)' }}
+            onClick={closeForm}
+          />
+          <div
+            className="card fade-in-up"
+            role="dialog"
+            aria-modal="true"
+            aria-label={editId ? 'Edit campaign' : 'New campaign'}
+            style={{
+              position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+              width: 'min(680px, calc(100vw - 32px))', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto',
+              zIndex: 1000, padding: 24, boxShadow: '0 24px 60px rgba(0,0,0,0.55)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>
+                {editId ? 'Edit campaign' : 'New campaign'}
+              </h3>
+              <button className="icon-btn" aria-label="Close" onClick={closeForm}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 16 }}>
+              <div>
+                <label className="field-label" htmlFor="cp-promo">Promo code (trigger)</label>
+                <input
+                  id="cp-promo"
+                  className="input"
+                  placeholder="e.g. get5, promo6"
+                  value={form.promo_code}
+                  onChange={e => setForm(f => ({ ...f, promo_code: e.target.value.toLowerCase() }))}
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="cp-type">Discount type</label>
+                <select
+                  id="cp-type"
+                  className="input"
+                  value={form.discount_type}
+                  onChange={e => setForm(f => ({ ...f, discount_type: e.target.value }))}
+                >
+                  <option value="flat">Flat amount</option>
+                  <option value="percent">Percentage</option>
+                </select>
+              </div>
+              <div>
+                <label className="field-label" htmlFor="cp-value">
+                  Value {form.discount_type === 'percent' ? '(%)' : `(${form.currency})`}
+                </label>
+                <input
+                  id="cp-value"
+                  className="input"
+                  type="number"
+                  step="0.01"
+                  value={form.discount_value}
+                  onChange={e => setForm(f => ({ ...f, discount_value: +e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, marginBottom: 16 }}>
+              <div>
+                <label className="field-label" htmlFor="cp-prefix">Code prefix</label>
+                <input
+                  id="cp-prefix"
+                  className="input"
+                  placeholder="EARLY"
+                  value={form.code_prefix}
+                  onChange={e => setForm(f => ({ ...f, code_prefix: e.target.value.toUpperCase() }))}
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="cp-length">Code length</label>
+                <input
+                  id="cp-length"
+                  className="input"
+                  type="number"
+                  min={6}
+                  max={16}
+                  value={form.code_length}
+                  onChange={e => setForm(f => ({ ...f, code_length: +e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="cp-max">Max codes</label>
+                <input
+                  id="cp-max"
+                  className="input"
+                  type="number"
+                  min={0}
+                  value={form.max_codes}
+                  onChange={e => setForm(f => ({ ...f, max_codes: +e.target.value }))}
+                />
+                <p className="help-text">0 = unlimited</p>
+              </div>
+              <div>
+                <label className="field-label" htmlFor="cp-days">Valid days</label>
+                <input
+                  id="cp-days"
+                  className="input"
+                  type="number"
+                  min={0}
+                  value={form.valid_days}
+                  onChange={e => setForm(f => ({ ...f, valid_days: +e.target.value }))}
+                />
+                <p className="help-text">0 = never expires</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 16 }}>
+              <div>
+                <label className="field-label" htmlFor="cp-currency">Currency</label>
+                <input
+                  id="cp-currency"
+                  className="input"
+                  value={form.currency}
+                  onChange={e => setForm(f => ({ ...f, currency: e.target.value.toUpperCase() }))}
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="cp-delivery">Delivery method</label>
+                <select
+                  id="cp-delivery"
+                  className="input"
+                  value={form.delivery_method}
+                  onChange={e => setForm(f => ({ ...f, delivery_method: e.target.value }))}
+                >
+                  <option value="api">API response</option>
+                  <option value="email">Email only</option>
+                  <option value="none">None (admin view only)</option>
+                </select>
+              </div>
+              <div>
+                <label className="field-label" htmlFor="cp-desc">Description</label>
+                <input
+                  id="cp-desc"
+                  className="input"
+                  placeholder="Early bird 50% off"
+                  value={form.description}
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="divider" style={{ margin: '4px 0 16px' }} />
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                <span
+                  className={`switch ${form.enabled ? 'on' : ''}`}
+                  role="switch"
+                  aria-checked={form.enabled}
+                  onClick={() => setForm(f => ({ ...f, enabled: !f.enabled }))}
+                />
+                <span>
+                  <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: 'var(--ink-soft)' }}>Enabled</span>
+                  <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>Issue codes for this campaign.</span>
+                </span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                <span
+                  className={`switch ${form.is_default ? 'on' : ''}`}
+                  role="switch"
+                  aria-checked={form.is_default}
+                  onClick={() => setForm(f => ({ ...f, is_default: !f.is_default }))}
+                />
+                <span>
+                  <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: 'var(--ink-soft)' }}>Default campaign</span>
+                  <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>Used when no promo code is provided.</span>
+                </span>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button className="btn-secondary" onClick={closeForm}>Cancel</button>
+              <button
+                className="btn-primary"
+                onClick={() => editId ? updateMut.mutate() : createMut.mutate()}
+                disabled={createMut.isPending || updateMut.isPending}
+              >
+                {editId
+                  ? (updateMut.isPending ? 'Updating...' : 'Update campaign')
+                  : (createMut.isPending ? 'Creating...' : 'Create campaign')}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Delete confirmation modal */}
       {confirmModal && (
         <>
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 999, backdropFilter: 'blur(3px)' }} onClick={() => setConfirmModal(null)} />
-          <div className="card" style={{
-            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-            width: 400, zIndex: 1000, padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
-          }}>
-            <h3 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 600, color: '#e2e8f0' }}>{confirmModal.title}</h3>
-            <p style={{ margin: '0 0 24px', fontSize: 14, color: '#94a3b8', lineHeight: 1.5 }}>{confirmModal.content}</p>
+          <div
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 999, backdropFilter: 'blur(3px)' }}
+            onClick={() => setConfirmModal(null)}
+          />
+          <div
+            className="card fade-in-up"
+            role="dialog"
+            aria-modal="true"
+            style={{
+              position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+              width: 'min(420px, calc(100vw - 32px))', zIndex: 1000, padding: 24,
+              boxShadow: '0 24px 60px rgba(0,0,0,0.55)',
+            }}
+          >
+            <h3 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>{confirmModal.title}</h3>
+            <p style={{ margin: '0 0 24px', fontSize: 14, color: 'var(--ink-soft)', lineHeight: 1.5 }}>{confirmModal.content}</p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button className="btn-secondary" onClick={() => setConfirmModal(null)} style={{ padding: '8px 16px' }}>Cancel</button>
-              <button className="btn-danger" onClick={confirmModal.onConfirm} disabled={deleteMut.isPending} style={{ padding: '8px 16px' }}>Confirm</button>
+              <button className="btn-secondary" onClick={() => setConfirmModal(null)}>Cancel</button>
+              <button className="btn-danger" onClick={confirmModal.onConfirm} disabled={deleteMut.isPending}>
+                {deleteMut.isPending ? 'Deleting...' : 'Delete'}
+              </button>
             </div>
           </div>
         </>

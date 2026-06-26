@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Mail, CheckCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Mail, CheckCircle, XCircle, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import api from '@/lib/api'
 
@@ -23,67 +23,163 @@ function EmailLogsPage() {
   const totalPages = Math.ceil(total / 50)
 
   return (
-    <div>
-      <div style={{ marginBottom: 20 }}>
-        <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#e2e8f0' }}>Email Logs</h2>
-        <p style={{ margin: 0, fontSize: 14, color: '#64748b' }}>{total} emails tracked</p>
-      </div>
+    <div style={{ maxWidth: 1100 }}>
+      {/* Page header */}
+      <header
+        className="topbar fade-in"
+        style={{ marginBottom: 24, padding: 0, border: 'none', background: 'transparent' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <span className="icon-tile" aria-hidden="true">
+            <Mail size={20} color="#d8b4fe" />
+          </span>
+          <div>
+            <h2 className="topbar-title" style={{ margin: 0 }}>Email Logs</h2>
+            <p className="topbar-subtitle" style={{ margin: '2px 0 0' }}>
+              Every transactional email sent for this project, with delivery status.
+            </p>
+          </div>
+        </div>
+        <span
+          className="badge badge-purple"
+          style={{ alignSelf: 'center', fontVariantNumeric: 'tabular-nums' }}
+        >
+          {total.toLocaleString()} tracked
+        </span>
+      </header>
 
-      <div className="card" style={{ overflow: 'hidden' }}>
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Status</th>
-              <th>Recipient</th>
-              <th>Template</th>
-              <th>Subject</th>
-              <th>Error</th>
-              <th>Sent At</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>Loading...</td></tr>
-            ) : logs.length === 0 ? (
-              <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>
-                <Mail size={32} color="#334155" style={{ marginBottom: 8 }} /><br />
-                No emails sent yet
-              </td></tr>
-            ) : logs.map((log: any) => (
-              <tr key={log.id}>
-                <td>
-                  {log.status === 'sent' ? (
-                    <span className="badge badge-green"><CheckCircle size={12} /> Sent</span>
-                  ) : (
-                    <span className="badge badge-red"><XCircle size={12} /> Failed</span>
-                  )}
-                </td>
-                <td style={{ color: '#94a3b8', fontSize: 13 }}>{log.recipient}</td>
-                <td><span className="badge badge-purple">{log.template}</span></td>
-                <td style={{ color: '#e2e8f0', fontSize: 13 }}>{log.subject || '—'}</td>
-                <td style={{ color: '#f87171', fontSize: 12, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {log.error || '—'}
-                </td>
-                <td style={{ color: '#64748b', fontSize: 13 }}>{formatDate(log.sent_at)}</td>
+      {/* Logs table */}
+      <div className="card fade-in-up" style={{ overflow: 'hidden', padding: 0 }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="data-table" style={{ minWidth: 760 }}>
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Recipient</th>
+                <th>Template</th>
+                <th>Subject</th>
+                <th>Error</th>
+                <th>Sent At</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={i}>
+                    {Array.from({ length: 6 }).map((__, j) => (
+                      <td key={j}>
+                        <div
+                          className="skeleton"
+                          style={{ height: 16, width: j === 0 ? 64 : j === 3 ? 180 : 120, borderRadius: 6 }}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : logs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ padding: 0 }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '56px 24px',
+                        textAlign: 'center',
+                      }}
+                    >
+                      <span className="icon-tile" aria-hidden="true">
+                        <Mail size={22} color="#6f6680" />
+                      </span>
+                      <div>
+                        <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#f5f3f7' }}>
+                          No emails sent yet
+                        </p>
+                        <p style={{ margin: '4px 0 0', fontSize: 13, color: '#9a91a8', maxWidth: 360 }}>
+                          Once your project starts sending confirmations, invites, or campaigns,
+                          they will show up here with their delivery status.
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                logs.map((log: any) => (
+                  <tr key={log.id}>
+                    <td>
+                      {log.status === 'sent' ? (
+                        <span className="badge badge-green"><CheckCircle size={12} /> Sent</span>
+                      ) : (
+                        <span className="badge badge-red"><XCircle size={12} /> Failed</span>
+                      )}
+                    </td>
+                    <td style={{ color: '#c9c2d4', fontSize: 13, whiteSpace: 'nowrap' }}>{log.recipient}</td>
+                    <td><span className="badge badge-purple">{log.template}</span></td>
+                    <td style={{ color: '#f5f3f7', fontSize: 13 }}>{log.subject || '—'}</td>
+                    <td
+                      title={log.error || undefined}
+                      style={{
+                        color: log.error ? '#f87171' : '#6f6680',
+                        fontSize: 12,
+                        maxWidth: 220,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {log.error ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <AlertTriangle size={12} style={{ flexShrink: 0 }} />
+                          {log.error}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td style={{ color: '#9a91a8', fontSize: 13, whiteSpace: 'nowrap' }}>{formatDate(log.sent_at)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {totalPages > 1 && (
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)',
-          }}>
-            <span style={{ fontSize: 13, color: '#64748b' }}>{total} emails</span>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              flexWrap: 'wrap',
+              padding: '14px 20px',
+              borderTop: '1px solid rgba(255,255,255,0.06)',
+            }}
+          >
+            <span style={{ fontSize: 13, color: '#9a91a8' }}>
+              {total.toLocaleString()} emails total
+            </span>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button className="btn-secondary" style={{ padding: '6px 12px' }}
-                onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+              <button
+                className="btn-secondary"
+                style={{ padding: '6px 12px' }}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                aria-label="Previous page"
+              >
                 <ChevronLeft size={14} />
               </button>
-              <span style={{ fontSize: 14, color: '#94a3b8' }}>{page} / {totalPages}</span>
-              <button className="btn-secondary" style={{ padding: '6px 12px' }}
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
+              <span style={{ fontSize: 13, color: '#c9c2d4', fontVariantNumeric: 'tabular-nums', minWidth: 64, textAlign: 'center' }}>
+                Page {page} / {totalPages}
+              </span>
+              <button
+                className="btn-secondary"
+                style={{ padding: '6px 12px' }}
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                aria-label="Next page"
+              >
                 <ChevronRight size={14} />
               </button>
             </div>

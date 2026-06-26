@@ -21,8 +21,8 @@ function RootComponent() {
         position="top-right"
         toastOptions={{
           style: {
-            background: '#1e1e2e',
-            color: '#e2e8f0',
+            background: '#1c1626',
+            color: '#f5f3f7',
             border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: '12px',
             fontSize: '14px',
