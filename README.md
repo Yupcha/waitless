@@ -11,7 +11,7 @@
 <p align="center">
   <a href="#-quick-start"><img src="https://img.shields.io/badge/get_started-→-6366f1?style=for-the-badge" /></a>
   <a href="#-features"><img src="https://img.shields.io/badge/features-→-22c55e?style=for-the-badge" /></a>
-  <a href="https://github.com/waitlss/waitless/releases"><img src="https://img.shields.io/badge/download-latest-f59e0b?style=for-the-badge" /></a>
+  <a href="https://github.com/Yupcha/waitless/releases"><img src="https://img.shields.io/badge/download-latest-f59e0b?style=for-the-badge" /></a>
 </p>
 
 <p align="center">
@@ -88,7 +88,7 @@ Waitless lets you launch beautiful waitlist pages, collect signups, and manage s
 ### Docker (Recommended)
 
 ```bash
-git clone https://github.com/waitlss/waitless
+git clone https://github.com/Yupcha/waitless
 cd waitless
 docker compose -f docker/docker-compose.yml up -d
 ```
@@ -99,7 +99,7 @@ Visit **http://localhost:8080** — the first account becomes the admin.
 
 ```bash
 # Clone
-git clone https://github.com/waitlss/waitless && cd waitless
+git clone https://github.com/Yupcha/waitless && cd waitless
 
 # Configure
 cp .env.example .env    # Edit with your database settings
